@@ -40,7 +40,35 @@ export default function GiveDoseScreen() {
     );
   }, [rows, q]);
 
-  const lowCount = (rows ?? []).filter((r) => describeStockRow(r).level !== 'OK').length;
+  /**
+   * Counted per level, not as one "not OK" bucket.
+   *
+   * Lumping them together labelled everything amber "LOW", so a freshly seeded
+   * catalog with no stock entered reported "25 LOW" when all 25 were OUT. That
+   * is the wrong signal in the wrong colour: LOW means running down, OUT means
+   * there is none, and CHECK means the balance went negative and a delivery was
+   * probably never logged. CLAUDE.md section 8 requires the colour AND the
+   * right word.
+   */
+  const counts = useMemo(() => {
+    const c = { CHECK: 0, OUT: 0, LOW: 0 };
+    for (const r of rows ?? []) {
+      const level = describeStockRow(r).level;
+      if (level === 'NEGATIVE') c.CHECK += 1;
+      else if (level === 'OUT') c.OUT += 1;
+      else if (level === 'LOW') c.LOW += 1;
+    }
+    return c;
+  }, [rows]);
+
+  // Most urgent first, and only what is actually non-zero.
+  const flags = (
+    [
+      ['CHECK', counts.CHECK, 'danger'],
+      ['OUT', counts.OUT, 'danger'],
+      ['LOW', counts.LOW, 'low'],
+    ] as const
+  ).filter(([, n]) => n > 0);
 
   if (loading && !rows) return <Loading label="Loading vaccines" />;
 
@@ -55,13 +83,16 @@ export default function GiveDoseScreen() {
             </T>
           </Pressable>
         </View>
-        {lowCount > 0 ? (
+        {flags.length ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${lowCount} vaccines low on stock`}
+            accessibilityLabel={flags.map(([w, n]) => `${n} ${w}`).join(', ')}
             onPress={() => router.push('/stock')}
+            style={st.flags}
           >
-            <Badge text={`${lowCount} LOW`} tone="low" />
+            {flags.map(([word, n, tone]) => (
+              <Badge key={word} text={`${n} ${word}`} tone={tone} />
+            ))}
           </Pressable>
         ) : null}
       </View>
@@ -131,6 +162,8 @@ export default function GiveDoseScreen() {
 
 const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
+  // Wraps rather than clipping the last badge at font scale 1.6x.
+  flags: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, justifyContent: 'flex-end' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

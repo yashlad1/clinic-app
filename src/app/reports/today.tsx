@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Badge, BigButton, Empty, Input, Loading, Row, SecondaryButton, T, useBottomInset } from '../../ui/components';
+import { BigButton, Empty, Input, Loading, Row, SecondaryButton, T, useBottomInset } from '../../ui/components';
 import { color, radius, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { asOfLabel, dosesGiven, dosesGivenTotals, movementStrip } from '../../domain/reports';
@@ -59,11 +59,16 @@ export default function TodayScreen() {
                 {l.vaccine_name}
                 {l.doses > 1 ? ` × ${l.doses}` : ''}
               </T>
-              <T style={st.meta}>
-                {l.patient_label ?? 'no name recorded'}
-                {l.lot_number ? ` · batch ${l.lot_number}` : ''}
-                {l.staff_name ? ` · ${l.staff_name}` : ''}
-              </T>
+              {/* Only what is actually known. Joining present parts avoids
+                  both "no name recorded" and a leading "· batch ..." . */}
+              {[l.patient_label, l.lot_number ? `batch ${l.lot_number}` : null, l.staff_name]
+                .filter(Boolean).length ? (
+                <T style={st.meta}>
+                  {[l.patient_label, l.lot_number ? `batch ${l.lot_number}` : null, l.staff_name]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </T>
+              ) : null}
               {editing === l.id ? (
                 <View style={{ gap: space.sm, marginTop: space.sm }}>
                   <Input
@@ -95,7 +100,6 @@ export default function TodayScreen() {
                 />
               ) : null}
             </View>
-            {l.needs_detail ? <Badge text="NO NAME" tone="neutral" /> : null}
           </View>
         ))
       ) : (
@@ -123,6 +127,9 @@ const st = StyleSheet.create({
   count: { fontSize: type.title, fontWeight: weight.bold, color: color.text },
   line: {
     flexDirection: 'row',
+    // Without this the children stretch to the row height; a pill-radius
+    // badge then rendered as a full-height grey oval.
+    alignItems: 'flex-start',
     gap: space.md,
     paddingVertical: space.md,
     borderBottomWidth: 1,

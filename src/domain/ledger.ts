@@ -220,6 +220,17 @@ export async function reverseMovement(
     throw new Error('cannot reverse a REVERSAL - append a new forward movement instead');
   }
 
+  // A movement can be reversed at most once - UNIQUE(reverses_id) enforces it.
+  // A second attempt is a double-tap on "Correct this entry", not a second
+  // intent, so return the reversal that already exists instead of letting the
+  // constraint surface as an unhandled rejection. Same reasoning as the
+  // idempotency key: a repeated request becomes a no-op that reports success.
+  const already = await db.first<StockMovement>(
+    `SELECT * FROM stock_movements WHERE reverses_id = ?`,
+    [original.id],
+  );
+  if (already) return { movement: already, created: false };
+
   return insertMovement(db, ctx, {
     clientActionId: input.clientActionId,
     vaccineId: original.vaccine_id,

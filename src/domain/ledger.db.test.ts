@@ -155,14 +155,28 @@ describe('reversal is the only undo, and it is the only correction', () => {
     expect(bal!.n).toBe(30);
   });
 
-  it('refuses to reverse the same movement twice', async () => {
-    const { db, ctx, bcg, lot } = await env();
+  it('reverses a movement at most once, and says so instead of throwing', async () => {
+    // This used to assert that a second reversal REJECTS. It does not any more,
+    // and the change is deliberate: the second call is a double-tap on
+    // "Correct this entry", not a second intent, and an exception there
+    // surfaced as an unhandled rejection in the UI. What actually matters is
+    // the arithmetic - one reversal row, no double credit - so that is what is
+    // asserted now, rather than the mechanism that used to enforce it.
+    const { db, ctx, bcg, lot, onHand } = await env();
     await recordReceipt(db, ctx, { clientActionId: 'r1', vaccineId: bcg, lotId: lot, doses: 30 });
     const { movement } = await recordAdministration(db, ctx, { clientActionId: 'tap-1', vaccineId: bcg, lotId: lot });
-    await reverseMovement(db, ctx, { clientActionId: 'undo-1', movementId: movement.id });
-    await expect(
-      reverseMovement(db, ctx, { clientActionId: 'undo-2', movementId: movement.id }),
-    ).rejects.toThrow();
+
+    const first = await reverseMovement(db, ctx, { clientActionId: 'undo-1', movementId: movement.id });
+    const second = await reverseMovement(db, ctx, { clientActionId: 'undo-2', movementId: movement.id });
+
+    expect(first.created).toBe(true);
+    expect(second.created).toBe(false);
+    expect(second.movement.id).toBe(first.movement.id);
+
+    const rows = await db.first<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM stock_movements WHERE reverses_id = ?`, [movement.id]);
+    expect(rows!.n).toBe(1);
+    expect(await onHand(bcg)).toBe(30);
   });
 
   it('refuses to reverse a REVERSAL', async () => {

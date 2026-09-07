@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BigButton, Chip, Empty, Field, Footer, Input, Loading, SecondaryButton, Stepper, T } from '../../ui/components';
 import { color, radius, space, touch, type, weight } from '../../ui/tokens';
@@ -65,7 +65,12 @@ export default function DoseScreen() {
   );
   const wouldGoNegative = vaccine.on_hand_doses - doses < 0;
 
-  const give = async () => {
+  /**
+   * `skipChild` is passed explicitly by the Skip button. It must not be
+   * inferred from `childLabel` being empty: the search box may hold a
+   * half-typed name, and a button that says "no name" has to mean it.
+   */
+  const write = async (skipChild: boolean) => {
     if (saving) return;
     setSaving(true);
     try {
@@ -76,30 +81,59 @@ export default function DoseScreen() {
         vaccineId, movementType: 'ADMINISTRATION', deltaDoses: -doses,
       });
 
-      const { movement } = await recordAdministration(db, { deviceId, staffId: staff?.[0]?.id ?? null }, {
-        clientActionId,
-        vaccineId,
-        lotId: effectiveLot,
-        doses,
-        patientId: childId,
-        patientLabel: childLabel ?? (childQuery.trim() || null),
-      });
-      await bumpDosesSinceBackup(db, doses);
+      const label = skipChild ? null : (childLabel ?? (childQuery.trim() || null));
+      const { movement, created } = await recordAdministration(
+        db,
+        { deviceId, staffId: staff?.[0]?.id ?? null },
+        {
+          clientActionId,
+          vaccineId,
+          lotId: effectiveLot,
+          doses,
+          patientId: skipChild ? null : childId,
+          patientLabel: label,
+        },
+      );
+      // Only a real write moves the backup nag; a replayed intent is a no-op.
+      if (created) await bumpDosesSinceBackup(db, doses);
       bump();
 
-      const who = childLabel ? ` to ${childLabel}` : '';
+      const who = label ? ` to ${label}` : '';
       const note = similar ? ' (a similar dose was recorded moments ago)' : '';
       toast.show(`${doses} × ${vaccine.name} recorded${who}.${note}`, async () => {
         // Undo writes a REVERSING ENTRY. It never deletes, so the correction is
         // auditable and stays available from the Ledger screen forever.
-        await reverseMovement(db, { deviceId }, { clientActionId: newId(), movementId: movement.id });
-        await bumpDosesSinceBackup(db, -doses);
+        const r = await reverseMovement(db, { deviceId }, { clientActionId: newId(), movementId: movement.id });
+        if (r.created) await bumpDosesSinceBackup(db, -doses);
         bump();
       });
       router.back();
     } finally {
       setSaving(false);
     }
+  };
+
+  /**
+   * An expired batch CONFIRMS; it never blocks.
+   *
+   * Invariant 5: recording a dose must never be blocked. If the only batch in
+   * the fridge is past its printed month - or the app's expiry data is simply
+   * wrong - refusing the write means the dose goes unlogged, and an unlogged
+   * dose is the drift this whole app exists to prevent. CLAUDE.md section 8
+   * lists "expired lot" among the few genuine reasons to confirm, so confirm
+   * is exactly what this does.
+   */
+  const give = (skipChild: boolean) => {
+    if (!expired) return void write(skipChild);
+    Alert.alert(
+      'This batch has expired',
+      `${selected?.lot_number ?? 'This batch'} expired ${expiryToMonthLabel(selected!.expiry_date!)}.` +
+        '\n\nRecord the dose anyway, or go back and pick another batch?',
+      [
+        { text: 'Pick another batch', style: 'cancel' },
+        { text: 'Record anyway', style: 'destructive', onPress: () => void write(skipChild) },
+      ],
+    );
   };
 
   return (
@@ -131,7 +165,8 @@ export default function DoseScreen() {
           ) : null}
           {expired ? (
             <T style={st.warn}>
-              This batch expired {expiryToMonthLabel(selected!.expiry_date!)}. Pick another batch.
+              This batch expired {expiryToMonthLabel(selected!.expiry_date!)}. Pick another batch if
+              you have one — you can still record the dose.
             </T>
           ) : null}
         </Field>
@@ -222,8 +257,8 @@ export default function DoseScreen() {
         {!childLabel ? (
           <Pressable
             accessibilityRole="button"
-            onPress={give}
-            disabled={saving || expired}
+            onPress={() => give(true)}
+            disabled={saving}
             style={st.skip}
           >
             <T style={st.skipText}>Skip — no name</T>
@@ -231,8 +266,8 @@ export default function DoseScreen() {
         ) : null}
         <BigButton
           label={`GIVE ${doses} ${doses === 1 ? 'DOSE' : 'DOSES'}`}
-          onPress={give}
-          disabled={saving || expired}
+          onPress={() => give(false)}
+          disabled={saving}
         />
       </Footer>
     </View>

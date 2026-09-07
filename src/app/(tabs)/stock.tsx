@@ -29,6 +29,9 @@ export default function AddStockScreen() {
     () => (rows ?? []).map((r) => ({ row: r, d: describeStockRow(r) })),
     [rows],
   );
+  // LOW, OUT and CHECK together - everything that wants a decision. Named for
+  // what it contains: calling this "low" labelled a shelf with nothing on it as
+  // merely running down.
   const lows = decorated.filter((x) => x.d.level !== 'OK');
 
   const shown = useMemo(() => {
@@ -93,7 +96,7 @@ export default function AddStockScreen() {
                 />
                 <Chip
                   accent="stock"
-                  label={`Low stock (${lows.length})`}
+                  label={`Low or out (${lows.length})`}
                   selected={filter === 'low'}
                   onPress={() => setFilter('low')}
                 />

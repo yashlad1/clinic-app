@@ -28,7 +28,22 @@ export async function findOrCreateLot(
       WHERE vaccine_id = ? AND lot_number = ? AND funding_source = ? AND deleted_at IS NULL`,
     [input.vaccineId, input.lotNumber, funding],
   );
-  if (existing) return existing.id;
+  if (existing) {
+    // A lot arriving again is normal (a split delivery, or a second box from
+    // the same batch). Identity is unchanged, but the expiry may not have been
+    // to hand the first time - without this backfill a missing expiry could
+    // never be supplied, because every later delivery matched and returned
+    // early. Only fills a NULL: it must not let a typo overwrite a date that
+    // FEFO and the expiry warnings already depend on.
+    if (input.expiryDate) {
+      await db.run(
+        `UPDATE lots SET expiry_date = ?, updated_at = ?
+          WHERE id = ? AND expiry_date IS NULL`,
+        [input.expiryDate, now, existing.id],
+      );
+    }
+    return existing.id;
+  }
 
   const id = newId(now);
   await db.run(
