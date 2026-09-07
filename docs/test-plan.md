@@ -73,7 +73,19 @@ Sub-second iteration for layout, type scale, contrast and flow. Use browser devt
 contrast ratios, and zoom to approximate a large system font scale.
 
 Real database behaviour is already fully covered by Layer A, so this layer is only about the
-interface. Do not spend time fighting SQLite's WASM build here.
+interface.
+
+Two configuration details were needed to make this work, and both are load-bearing:
+
+- `metro.config.js` adds `wasm` to `resolver.assetExts`. `expo-sqlite`'s web build loads
+  `wa-sqlite.wasm`, and Metro does not treat `.wasm` as an asset by default, so the bundle fails
+  without it.
+- `app.json` sets `web.output` to `"single"` (SPA). With the default `"static"`, the static-render
+  pass fails with *"Worker chunk not found for expo-sqlite/web/worker.ts"* — the SQLite web worker
+  cannot be bundled during server rendering.
+
+Verified: **985 modules, zero bundling errors**, with every screen and domain module present in the
+compiled bundle.
 
 ---
 

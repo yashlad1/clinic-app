@@ -18,17 +18,31 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       }
     },
-    "ios": { "icon": "./assets/expo.icon" },
-    "web": { "output": "static", "favicon": "./assets/images/favicon.png" },
-    "runtimeVersion": { "policy": "fingerprint" },
+    "ios": {
+      "icon": "./assets/expo.icon"
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
     "plugins": [
       "expo-router",
       "expo-sqlite",
       [
         "expo-splash-screen",
-        { "backgroundColor": "#FFFFFF", "image": "./assets/images/splash-icon.png", "imageWidth": 76 }
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 76
+        }
       ]
     ],
-    "experiments": { "typedRoutes": true, "reactCompiler": true }
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
   }
 }
