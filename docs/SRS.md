@@ -292,7 +292,8 @@ reading without glasses, in a brightly lit room. These are requirements, not pre
 | **NFR-50** | The entire data and domain layer shall be testable in plain Node with no device and no emulator. | `jest.config.js` project `db`; 113 tests |
 | **NFR-51** | Date and number formatting shall not depend on platform locale data, whose output differs between Node and Android. | `time.ts`; `time.db.test.ts` |
 | **NFR-52** | Primary keys shall be client-generated UUIDs, with `updated_at` and soft deletes throughout, so multi-device merge or cloud sync is additive rather than a rewrite. | `ids.ts`; `m001_initial.ts` |
-| **NFR-53** | JavaScript-only changes, including new migrations, shall be deliverable without reinstalling the application. | `app.json` `runtimeVersion: fingerprint`; `expo-updates` |
+| **NFR-53** | JavaScript-only changes, including new migrations, shall be deliverable without reinstalling the application. **Bounded by NFR-53a:** delivery only reaches installs whose `runtimeVersion` fingerprint matches the publishing tree. | `app.json` `runtimeVersion: fingerprint`; `expo-updates` |
+| **NFR-53a** | Because a fingerprint mismatch causes an update to be silently ignored rather than reported, any change that rotates the fingerprint — a native dependency, a config plugin, or a build profile `env` entry — shall be treated as requiring a new APK, and the fingerprint shall be compared against the installed build before publishing. | `docs/RELEASE.md` § "The way this fails silently"; `eas fingerprint:generate` |
 
 ---
 

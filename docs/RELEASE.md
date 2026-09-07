@@ -134,6 +134,37 @@ She reopens the app and has it. No reinstall, no new APK, no involvement from he
 You only need a **new APK** when native code changes — adding a native module, or upgrading the Expo
 SDK. Those are rare.
 
+### The way this fails silently: the fingerprint must match
+
+`app.json` sets `runtimeVersion: { "policy": "fingerprint" }`. An OTA update is only applied by an
+installed app whose **runtimeVersion is byte-identical** to the update's. A mismatch is not an error
+on her phone — the update is simply ignored, forever, with no message. You will believe you shipped
+a fix that never arrived.
+
+The fingerprint covers native dependencies, config plugins **and the build profile's `env` block**.
+That last one is easy to forget. It bit this project immediately:
+
+| | runtimeVersion |
+| --- | --- |
+| Build 3 (universal APK) | `c47562a16ac2df4314fc5c9a97c1912c042c1b0c` |
+| Build 4 (ARM-only, after adding `env` to `eas.json`) | `fa84bf12d3c530121ae0f71a302990527a15188c` |
+
+Adding one environment variable rotated the fingerprint, which means **build 3 can never receive an
+OTA update from this tree.** Nothing warns you about that.
+
+So before publishing an update, check that the tree you are publishing from matches the APK she is
+actually running:
+
+```sh
+npx eas-cli fingerprint:generate --platform android --environment production
+# must equal the runtimeVersion of her installed build:
+npx eas-cli build:list --limit 5
+```
+
+If they differ, the fix needs a **new APK**, not an OTA. And whenever you deliberately change the
+fingerprint, the old install is cut off from updates — so send her the new APK reasonably promptly
+rather than assuming OTA still has her covered.
+
 **Always have her take a backup before an update.** It costs one tap and removes the only scenario
 where an update could cost data.
 
