@@ -64,7 +64,7 @@ Confirmed with the user. Do not relitigate without asking.
 | Decision | Choice |
 | --- | --- |
 | Platform | React Native, Expo SDK 57, real installable Android app |
-| Storage | On-device SQLite. No accounts, no backend, no internet needed to use it |
+| Storage | On-device SQLite is the **source of truth**. The app runs fully offline and needs no internet to use. Since 7 Sep 2026 it also replicates to a server — see section 10a |
 | Dose entry captures | Vaccine + timestamp, batch/lot, child (**optional**), who entered it |
 | Child identification | Saved patient list, type-ahead + inline quick-add |
 | Child required? | **No — always skippable** |
@@ -432,6 +432,68 @@ always answer "am I safe?" without tapping.
 **Encryption:** child health data. For v1, Android app-private storage plus the device lock screen is
 the real control; SQLCipher would mean abandoning Expo Go. Onboarding must state the phone needs a
 screen lock. An in-app PIN gate is a cheap JS-only addition later.
+
+---
+
+## 10a. Server backup (added 7 Sep 2026)
+
+The user asked for backend storage rather than phone-only. Provider: **Supabase**
+(Postgres, `ap-south-1` Mumbai, so children's data stays in India). Accessed over plain `fetch`
+against PostgREST — **no `@supabase/supabase-js`**, for the same reason the top tabs and the expiry
+wheel are hand-written: it would be one more dependency to carry, it rotates the OTA fingerprint on
+every upgrade, and we use four endpoints.
+
+### The invariant that must not be traded away
+
+**SQLite remains the source of truth, and no write ever waits on a network.** Invariant 5 is
+unchanged: recording a dose must never be blocked. Sync is a background push that cannot fail the
+user — it never blocks, never opens a dialog, and never reports its own failures as errors, because
+a failed sync is not a failed dose. Status lives quietly on More.
+
+### Push-only, deliberately
+
+Chosen over bidirectional sync because it removes conflict resolution from the design entirely — the
+class of bug that would be hardest to notice and worst to have in a stock ledger. One phone writes;
+the server is a live replica.
+
+This is nearly free here because of decisions already made: `stock_movements` is append-only with
+client-generated UUIDs, so replication is "push rows the server doesn't have", and derived stock is
+recomputed rather than transferred, so any device that has the ledger computes the same numbers.
+
+| Rule | Why |
+| --- | --- |
+| Tables push in `PUSH_ORDER` (FK order) | A half-uploaded phone still leaves a readable clinic record. Lives in `m002_sync.ts` because it is a property of the schema, not the transport |
+| `dirty` clears only *after* the server acknowledges | The failure mode becomes "uploaded twice" (a no-op, keyed by row id) and never "believed uploaded but wasn't" |
+| Re-dirtying is a **DB trigger**, not a call-site edit | Same reasoning as the immutability triggers. It fires on `updated_at` changing, so it cannot fight sync's own mark-uploaded write — a recursion that would mean the queue never drains |
+| `settings` is **not** replicated | It holds `device_id` and the server credentials. Replicating it would overwrite one phone's identity with another's |
+| `dirty`/`last_synced_at` are stripped before upload | They are this phone's bookkeeping, not clinic data |
+| `stock_movements` has **no UPDATE or DELETE policy** server-side | With RLS on, a missing policy is a denial. This is the server's half of invariant 1 |
+
+### Restore
+
+`restore.ts` is what makes the backend worth having — replication without a restore path is theatre.
+It restores in write order so a `REVERSAL` lands after the movement it reverses, satisfying the
+self-referencing FK without deferring constraints. It is `INSERT OR IGNORE`, so it is safe to run
+twice and never overwrites what the phone already has.
+
+### Credentials
+
+Live in the local `settings` table, entered once per phone on the Server backup screen. **Never in
+`app.json` or any committed file** — the repo is public (section 13), and although a Supabase
+publishable key is designed to be exposed (RLS is the real guard), publishing a specific clinic's key
+is a standing invitation to probe it.
+
+### The server schema is generated, not hand-written
+
+`npm run supabase:schema > supabase/schema.sql` derives the Postgres DDL from the live SQLite schema
+via `PRAGMA table_info`. Hand-typing it is the obvious approach and the wrong one: PostgREST rejects
+an unknown column with a 400, so one missed column silently breaks every push of that table. Re-run
+it after any future migration.
+
+### This does not replace the zip backup
+
+Both stay. A zip the clinician holds herself is the only copy that does not depend on an account
+still working, a card not expiring, or a free tier not changing. The backup nag is unchanged.
 
 ---
 

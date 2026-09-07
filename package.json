@@ -58,7 +58,8 @@
     "build:apk": "npx --yes eas-cli@23.2.0 build --platform android --profile production",
     "build:preview": "npx --yes eas-cli@23.2.0 build --platform android --profile preview",
     "ota": "npx --yes eas-cli@23.2.0 update --branch production --message",
-    "keystore": "npx --yes eas-cli@23.2.0 credentials"
+    "keystore": "npx --yes eas-cli@23.2.0 credentials",
+    "supabase:schema": "NODE_OPTIONS=--disable-warning=ExperimentalWarning node scripts/supabase-schema.ts"
   },
   "private": true
 }

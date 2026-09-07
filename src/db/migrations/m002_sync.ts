@@ -28,6 +28,22 @@ export const SYNC_TABLES = [
 
 export type SyncTable = (typeof SYNC_TABLES)[number];
 
+/**
+ * The same tables, in FOREIGN KEY order.
+ *
+ * Lives here rather than in the sync module because it is a property of the
+ * schema, not of the transport: vaccines and patients must exist before the
+ * movements that reference them. Pushing in this order means a half-uploaded
+ * phone still leaves a readable clinic record on the server.
+ */
+export const PUSH_ORDER: SyncTable[] = [
+  'vaccines',
+  'patients',
+  'staff',
+  'lots',
+  'stock_movements',
+];
+
 export const m002 = {
   to: 2,
   name: 'sync',

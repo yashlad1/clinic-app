@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DbProvider } from '../db/provider';
 import { ToastProvider } from '../ui/snackbar';
+import { AutoSync } from '../sync/auto';
 import { Empty, Loading, Screen } from '../ui/components';
 import { color } from '../ui/tokens';
 
@@ -29,6 +30,7 @@ export default function RootLayout() {
         )}
       >
         <ToastProvider>
+          <AutoSync />
           <Stack
             screenOptions={{
               headerStyle: { backgroundColor: color.bg },
@@ -55,6 +57,7 @@ export default function RootLayout() {
             <Stack.Screen name="ledger/index" options={{ title: 'All entries' }} />
             <Stack.Screen name="backup/index" options={{ title: 'Backup' }} />
             <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
+            <Stack.Screen name="sync/index" options={{ title: 'Server backup' }} />
           </Stack>
         </ToastProvider>
       </DbProvider>

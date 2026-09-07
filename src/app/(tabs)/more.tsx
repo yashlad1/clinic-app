@@ -7,6 +7,7 @@ import { useQuery } from '../../db/provider';
 import { SETTING, getSetting } from '../../db/repo/settings';
 import { lastBackupLabel } from '../../domain/backup-nag';
 import { missingChildEntries } from '../../domain/reports';
+import { syncStatus } from '../../sync/push';
 
 /** Everything infrequent, as a flat list of large labelled rows. */
 export default function MoreScreen() {
@@ -17,6 +18,7 @@ export default function MoreScreen() {
     async (db) => Number(await getSetting(db, SETTING.lastBackupAt)) || null,
   );
   const { data: missing } = useQuery((db) => missingChildEntries(db, 100));
+  const { data: sync } = useQuery((db) => syncStatus(db));
 
   return (
     <ScrollView
@@ -26,7 +28,27 @@ export default function MoreScreen() {
     >
       <Card tone="soft">
         <T style={st.backupLabel}>{lastBackupLabel(lastBackupAt ?? null)}</T>
-        <Row title="Back up / restore" onPress={() => router.push('/backup')} last />
+        <Row title="Back up / restore" onPress={() => router.push('/backup')} />
+        {/* The pending count is the honest answer to "is my data safe?" - a
+            server backup that is quietly 40 entries behind is worse than none,
+            because it is believed. */}
+        <Row
+          title="Server backup"
+          subtitle={
+            sync == null
+              ? undefined
+              : sync.lastOkAt === null
+                ? 'Not set up'
+                : sync.pending > 0
+                  ? `${sync.pending} ${sync.pending === 1 ? 'entry' : 'entries'} waiting to upload`
+                  : 'Everything uploaded'
+          }
+          right={
+            sync && sync.lastError && sync.pending > 0 ? <Badge text="CHECK" tone="low" /> : undefined
+          }
+          onPress={() => router.push('/sync')}
+          last
+        />
       </Card>
 
       <SectionTitle>Reports</SectionTitle>

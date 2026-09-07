@@ -1,5 +1,5 @@
 import type { Db } from '../db/driver';
-import { SYNC_TABLES, type SyncTable } from '../db/migrations/m002_sync';
+import { PUSH_ORDER, SYNC_TABLES, type SyncTable } from '../db/migrations/m002_sync';
 import type { Row, SyncBackend } from './backend';
 import { newId } from '../domain/ids';
 
@@ -22,8 +22,7 @@ import { newId } from '../domain/ids';
  *     never "believed uploaded but wasn't".
  */
 
-/** FK order. Do not reorder without checking the foreign keys. */
-export const PUSH_ORDER: SyncTable[] = ['vaccines', 'patients', 'staff', 'lots', 'stock_movements'];
+export { PUSH_ORDER };
 
 if (PUSH_ORDER.length !== SYNC_TABLES.length) {
   throw new Error('PUSH_ORDER must cover every table in SYNC_TABLES');
