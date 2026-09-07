@@ -166,6 +166,27 @@ That last one is easy to forget. It bit this project immediately:
 Adding one environment variable rotated the fingerprint, which means **build 3 can never receive an
 OTA update from this tree.** Nothing warns you about that.
 
+It very nearly happened a second time, for an even smaller reason. `packageJson:scripts` is also a
+fingerprint source, so adding a single npm alias — `"supabase:schema"` — rotated the hash and would
+have orphaned build 5 from the whole server-backup feature and eight bug fixes. The fix was to delete
+the alias and invoke the script directly:
+
+```sh
+NODE_OPTIONS=--disable-warning=ExperimentalWarning node scripts/supabase-schema.ts > supabase/schema.sql
+```
+
+**The general rule: adding a convenience script to `package.json` costs an APK.** Before touching
+that file, check the fingerprint. The full list of non-`node_modules` sources is short and worth
+knowing:
+
+```
+.gitignore   eas.json   assets/images/*   expoConfig
+packageJson:scripts     package:react-native
+expoAutolinkingConfig:android    rncoreAutolinkingConfig:android
+```
+
+Everything under `src/` is absent from that list, which is exactly why application changes ship OTA.
+
 So before publishing an update, check that the tree you are publishing from matches the APK she is
 actually running:
 
