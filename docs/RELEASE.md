@@ -84,14 +84,22 @@ Related, same reason: **never change `android.package`** (`in.clinicstock.app`).
 
 | Date | versionCode | Version | Size | Notes |
 | --- | --- | --- | --- | --- |
-| 7 Sep 2026 | 3 | 0.1.0 | 109 MB | First successful build. Universal APK — all four ABIs |
+| 7 Sep 2026 | 3 | 0.1.0 | 109 MB | First successful build. Universal APK — all four ABIs. **Orphaned from OTA** (see below) |
+| 7 Sep 2026 | **4** | 0.1.0 | **62 MB** | **Current.** ARM-only. Same signing key as build 3, so it upgrades in place. `runtimeVersion fa84bf12…` matches the tree, so OTA reaches it |
 
 ### Why later builds are ~half the size
 
 Build 3 shipped `arm64-v8a`, `armeabi-v7a`, **`x86` and `x86_64`**. The last two are emulator
-architectures; no phone will ever load them, and they were ~55% of the download. Since the delivery
-channel is WhatsApp or Drive to a phone on Indian mobile data, that is a real cost paid by the person
-we are trying to help.
+architectures; no phone will ever load them. Dropping them measured **109 MB → 62 MB, a 43% cut**.
+Since the delivery channel is WhatsApp or Drive to a phone on Indian mobile data, that is a real cost
+paid by the person we are trying to help.
+
+It does not go lower by this route: the five `classes*.dex` files are ~44 MB and architecture-
+independent, so they are now the floor. Shrinking further means removing unused dependencies (the
+`create-expo-app` template left `@expo/ui`, `expo-device`, `expo-glass-effect`, `expo-symbols`,
+`expo-web-browser`, `expo-image` and `react-native-worklets` in `package.json`, none of them imported
+anywhere in `src/`) — worth doing, but it rotates the fingerprint, so bundle it with the next
+deliberate native change rather than spending an orphaning event on it alone.
 
 `eas.json` now pins release builds to the two ARM ABIs:
 
@@ -106,7 +114,13 @@ clinic that may hand this to a spare handset.
 
 ## Send it to her
 
-Send the artifact URL over WhatsApp. On her phone:
+Send the artifact URL over WhatsApp. Build 4 (62 MB):
+
+```
+https://expo.dev/artifacts/eas/voPkm1slDGItnvKLE-cfsI53HG9ZHFihekgP5nZF7Nk.apk
+```
+
+On her phone:
 
 1. Tap the link, let Chrome download the `.apk`.
 2. Android will ask to allow installs from this source — allow it once.
