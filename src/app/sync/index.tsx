@@ -8,6 +8,7 @@ import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { useAction } from '../../ui/use-action';
 import { SYNC_SETTING, loadSyncConfig, saveSyncConfig } from '../../sync/config';
+import { EMBEDDED_SYNC, hasEmbeddedSync } from '../../sync/embedded';
 import { supabaseBackend } from '../../sync/backend.supabase';
 import { pushOnce, syncStatus } from '../../sync/push';
 import { previewServer, restoreFromServer } from '../../sync/restore';
@@ -39,17 +40,21 @@ export default function SyncScreen() {
     key: (await getSetting(d, SYNC_SETTING.key)) ?? '',
     email: (await getSetting(d, SYNC_SETTING.email)) ?? '',
     password: (await getSetting(d, SYNC_SETTING.password)) ?? '',
-    enabled: (await getSetting(d, SYNC_SETTING.enabled)) === '1',
+    enabledRaw: await getSetting(d, SYNC_SETTING.enabled),
   }));
   const { data: status } = useQuery((d) => syncStatus(d));
 
   useEffect(() => {
     if (!saved) return;
-    setUrl(saved.url);
-    setKey(saved.key);
-    setEmail(saved.email);
-    setPassword(saved.password);
-    setEnabled(saved.enabled);
+    // Show whatever is actually in force: this phone's own settings if it has
+    // any, otherwise the values the build shipped with. Blank fields on a build
+    // that is already backing up would be a lie.
+    setUrl(saved.url || EMBEDDED_SYNC?.url || '');
+    setKey(saved.key || EMBEDDED_SYNC?.publishableKey || '');
+    setEmail(saved.email || EMBEDDED_SYNC?.email || '');
+    setPassword(saved.password || EMBEDDED_SYNC?.password || '');
+    // Unset means "follow the build", so an embedded build reads as on.
+    setEnabled(saved.enabledRaw === '1' || (saved.enabledRaw === null && hasEmbeddedSync));
   }, [saved]);
 
   if (error) return <ErrorState error={error} onRetry={reload} what="load your backup settings" />;
@@ -144,9 +149,16 @@ export default function SyncScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <T style={st.intro}>
-        Your records always live on this phone, and the app works with no internet. Turning this on
-        keeps a second copy on a server, so a lost or broken phone does not lose the register.
+        Your records always live on this phone, and the app works with no internet. Server backup
+        keeps a second copy off the phone, so a lost or broken phone does not lose the register.
       </T>
+
+      {hasEmbeddedSync ? (
+        <T style={st.builtIn}>
+          Already set up — this app was built with the clinic&apos;s server details, so backup runs
+          on its own. Nothing below needs changing unless the server moves.
+        </T>
+      ) : null}
 
       <Field label="Server backup">
         <View style={st.chipRow}>
@@ -213,6 +225,10 @@ export default function SyncScreen() {
 const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
   intro: { fontSize: type.body, color: color.text, lineHeight: 26, marginBottom: space.lg },
+  builtIn: {
+    fontSize: type.label, color: color.ok, fontWeight: weight.semibold,
+    lineHeight: 24, marginBottom: space.lg,
+  },
   chipRow: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
   section: {
     fontSize: type.label, fontWeight: weight.bold, color: color.textMuted,

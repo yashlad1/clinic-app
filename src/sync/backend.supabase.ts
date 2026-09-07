@@ -49,23 +49,62 @@ export function supabaseBackend(cfg: SupabaseConfig): SyncBackend & { signOut: (
     }
   };
 
-  const signIn = async (): Promise<Session> => {
-    const res = await request('/auth/v1/token?grant_type=password', {
+  const toSession = (j: { access_token: string; refresh_token: string; expires_in: number }): Session => ({
+    accessToken: j.access_token,
+    refreshToken: j.refresh_token,
+    // 60s of slack, so a long push does not expire mid-flight.
+    expiresAt: Date.now() + (j.expires_in - 60) * 1000,
+  });
+
+  const passwordGrant = async (): Promise<Response> =>
+    request('/auth/v1/token?grant_type=password', {
       method: 'POST',
       headers: { apikey: cfg.publishableKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: cfg.email, password: cfg.password }),
     });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new SyncAuthError(`Sign-in failed (${res.status}). ${body.slice(0, 160)}`);
+
+  /**
+   * Sign in, creating the account on first run if it does not exist yet.
+   *
+   * This is what removes the last manual setup step: the clinic phone provisions
+   * its own account instead of someone creating one in the Supabase dashboard
+   * and relaying the details. Self-provisioning only succeeds if email
+   * confirmation is off for the project - if it is on, the account is created
+   * but cannot sign in, so that case gets its own message rather than a generic
+   * auth failure, because the fix is a project setting and nothing the phone can
+   * do about it.
+   */
+  const signIn = async (): Promise<Session> => {
+    let res = await passwordGrant();
+    if (res.ok) return toSession(await res.json());
+
+    const first = await res.text().catch(() => '');
+    // 400 "Invalid login credentials" covers both a wrong password and an
+    // account that was never created; signing up distinguishes them.
+    if (res.status !== 400) {
+      throw new SyncAuthError(`Sign-in failed (${res.status}). ${first.slice(0, 160)}`);
     }
-    const j = (await res.json()) as { access_token: string; refresh_token: string; expires_in: number };
-    return {
-      accessToken: j.access_token,
-      refreshToken: j.refresh_token,
-      // 60s of slack, so a long push does not expire mid-flight.
-      expiresAt: Date.now() + (j.expires_in - 60) * 1000,
-    };
+
+    const signup = await request('/auth/v1/signup', {
+      method: 'POST',
+      headers: { apikey: cfg.publishableKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: cfg.email, password: cfg.password }),
+    });
+    if (!signup.ok) {
+      const body = await signup.text().catch(() => '');
+      // Signups disabled means the account really must be made by hand.
+      throw new SyncAuthError(
+        `Could not sign in, and could not create the account (${signup.status}). ${body.slice(0, 160)}`,
+      );
+    }
+
+    res = await passwordGrant();
+    if (res.ok) return toSession(await res.json());
+    throw new SyncAuthError(
+      'The account was created but cannot sign in yet. In Supabase, open ' +
+        'Authentication → Providers → Email and turn OFF "Confirm email", or add the ' +
+        'user manually with "Auto Confirm User" ticked.',
+    );
   };
 
   const token = async (): Promise<string> => {
@@ -77,12 +116,7 @@ export function supabaseBackend(cfg: SupabaseConfig): SyncBackend & { signOut: (
         body: JSON.stringify({ refresh_token: session.refreshToken }),
       });
       if (res.ok) {
-        const j = (await res.json()) as { access_token: string; refresh_token: string; expires_in: number };
-        session = {
-          accessToken: j.access_token,
-          refreshToken: j.refresh_token,
-          expiresAt: Date.now() + (j.expires_in - 60) * 1000,
-        };
+        session = toSession(await res.json());
         return session.accessToken;
       }
       // A refresh token can be revoked or simply expire; fall through and use

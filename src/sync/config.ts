@@ -2,6 +2,7 @@ import type { Db } from '../db/driver';
 import { getSetting, setSetting } from '../db/repo/settings';
 import { supabaseBackend, type SupabaseConfig } from './backend.supabase';
 import type { SyncBackend } from './backend';
+import { EMBEDDED_SYNC } from './embedded';
 
 /**
  * Where the server credentials live: the local `settings` table, entered once
@@ -22,6 +23,17 @@ export const SYNC_SETTING = {
   enabled: 'sync_enabled',
 } as const;
 
+/**
+ * Resolution order: what this phone was told, then what the build shipped with.
+ *
+ * The override matters more than it looks. If the clinic ever moves to its own
+ * project, or the password is rotated, that is a Settings edit on the phone
+ * rather than a new APK sent to India over mobile data.
+ *
+ * `enabled` is the same story: unset means "follow the build", so an embedded
+ * build is on from first launch, while an explicit '0' from the Settings screen
+ * still switches it off.
+ */
 export async function loadSyncConfig(db: Db): Promise<SupabaseConfig | null> {
   const [url, key, email, password, enabled] = await Promise.all([
     getSetting(db, SYNC_SETTING.url),
@@ -30,9 +42,19 @@ export async function loadSyncConfig(db: Db): Promise<SupabaseConfig | null> {
     getSetting(db, SYNC_SETTING.password),
     getSetting(db, SYNC_SETTING.enabled),
   ]);
-  if (enabled !== '1') return null;
-  if (!url || !key || !email || !password) return null;
-  return { url, publishableKey: key, email, password };
+
+  if (enabled === '0') return null;
+  if (enabled !== '1' && !EMBEDDED_SYNC) return null;
+
+  const resolved: SupabaseConfig = {
+    url: url || EMBEDDED_SYNC?.url || '',
+    publishableKey: key || EMBEDDED_SYNC?.publishableKey || '',
+    email: email || EMBEDDED_SYNC?.email || '',
+    password: password || EMBEDDED_SYNC?.password || '',
+  };
+  const complete =
+    !!resolved.url && !!resolved.publishableKey && !!resolved.email && !!resolved.password;
+  return complete ? resolved : null;
 }
 
 export async function saveSyncConfig(
