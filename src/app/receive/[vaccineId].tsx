@@ -106,20 +106,21 @@ export default function ReceiveScreen() {
         <Field label="Expiry" hint="Month and year, as printed on the vial.">
           <View style={st.chipRow}>
             {MONTHS.map((m, i) => (
-              <Chip key={m} label={m} selected={expMonth === i + 1} onPress={() => setExpMonth(i + 1)} />
+              <Chip accent="stock" key={m} label={m} selected={expMonth === i + 1} onPress={() => setExpMonth(i + 1)} />
             ))}
           </View>
           <View style={st.chipRow}>
             {years.map((y) => (
-              <Chip key={y} label={String(y)} selected={expYear === y} onPress={() => setExpYear(y)} />
+              <Chip accent="stock" key={y} label={String(y)} selected={expYear === y} onPress={() => setExpYear(y)} />
             ))}
           </View>
         </Field>
 
         <Field label="Where it came from">
           <View style={st.chipRow}>
-            <Chip label="Bought" selected={funding === 'PRIVATE'} onPress={() => setFunding('PRIVATE')} />
+            <Chip accent="stock" label="Bought" selected={funding === 'PRIVATE'} onPress={() => setFunding('PRIVATE')} />
             <Chip
+              accent="stock"
               label="Government (free)"
               selected={funding === 'GOVT_UIP'}
               onPress={() => setFunding('GOVT_UIP')}
@@ -128,7 +129,7 @@ export default function ReceiveScreen() {
         </Field>
 
         <Field label={byVial ? 'How many vials?' : 'How many doses?'}>
-          <Stepper value={qty} onChange={setQty} min={1} max={500} quickValues={[1, 5, 10, 20, 50]} />
+          <Stepper accent="stock" value={qty} onChange={setQty} min={1} max={500} quickValues={[1, 5, 10, 20, 50]} />
           {byVial ? <T style={st.calc}>= {doses} doses</T> : null}
         </Field>
 
@@ -137,6 +138,7 @@ export default function ReceiveScreen() {
 
       <View style={st.footer}>
         <BigButton
+          accent="stock"
           label="ADD TO STOCK"
           sublabel={lotNumber.trim() ? undefined : 'Enter the batch number first'}
           onPress={save}
@@ -154,6 +156,6 @@ const st = StyleSheet.create({
   sub: { fontSize: type.label, color: color.textMuted, marginTop: space.xs, marginBottom: space.xl },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
   calc: { fontSize: type.body, fontWeight: weight.semibold, color: color.textMuted, marginTop: space.sm },
-  after: { fontSize: type.body, fontWeight: weight.semibold, color: color.ok },
+  after: { fontSize: type.body, fontWeight: weight.semibold, color: color.stock },
   footer: { padding: space.lg, borderTopWidth: 1, borderTopColor: color.border },
 });

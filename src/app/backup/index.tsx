@@ -116,7 +116,7 @@ export default function BackupScreen() {
         />
         <BigButton
           label="Restore from a backup"
-          tone="neutral"
+          variant="outline"
           onPress={doRestore}
           disabled={!!busy}
         />

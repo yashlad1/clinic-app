@@ -134,7 +134,14 @@ that single device.
 | **FR-5** | Each catalog entry shall carry a **safety limit** in doses, editable by the clinician. | `catalog/[id].tsx`; `stock.db.test.ts` |
 | **FR-6** | The clinician shall be able to edit any catalog entry, and to hide one without deleting it, so history keeps resolving. | `catalog/[id].tsx`; test-plan step 16 |
 | **FR-7** | Vaccine search shall match trade name, generic name and aliases, so "penta", "dpt" and "easyfive" all find the right row. | `catalog.ts` `searchVaccines` |
-| **FR-8** | Catalog creation shall not be reachable from any dose-entry or stock-entry screen. | Route inspection; C3 |
+| **FR-8** | Catalog creation shall not be reachable from any dose-entry or stock-entry screen. It shall be reachable only from the Vaccines tab. | Route inspection; C3 |
+| **FR-9a** | The clinician shall be able to **add a new vaccine** to the catalog, specifying trade name, unit mode, doses per vial and safety limit. | `catalog/new.tsx`; `catalog.db.test.ts` — "adding a vaccine" |
+| **FR-9b** | Attempting to add a vaccine whose name already exists shall be refused with a plain-language message naming the conflict, not a raw constraint error. | `catalog/new.tsx`; `catalog.db.test.ts` |
+| **FR-9c** | The clinician shall be able to **hide** a vaccine (out of the pickers, one tap to restore) and separately to **remove** it (out of the catalog entirely). | `(tabs)/vaccines.tsx`; `catalog.db.test.ts` — "hiding versus removing" |
+| **FR-9d** | Removal shall be a **soft delete**. It shall not orphan the ledger: every past dose shall still resolve to the vaccine's name in the history screen and in the CSV export. | `catalog.db.test.ts` — "does NOT orphan the ledger" |
+| **FR-9e** | Before removing, the system shall state the consequence in real numbers — doses currently in stock, doses given, entries retained. | `(tabs)/vaccines.tsx`; `catalog.ts` `vaccineUsage` |
+| **FR-9f** | A removal shall be reversible, both by restoring the row and by re-adding the same name. | `catalog.db.test.ts` — "frees the name" / "restoring the original row" |
+| **FR-9g** | Removed vaccines shall remain listed under a "Removed" filter, so nothing disappears silently. | `catalog.db.test.ts` — "lists what has been removed" |
 
 ### 3.2 Receiving stock
 
@@ -167,7 +174,7 @@ that single device.
 
 | Ref | Requirement | Verified by |
 | --- | --- | --- |
-| **FR-40** | Every entry shall be undoable immediately via an on-screen action lasting at least 8 seconds. | `snackbar.tsx`; test-plan step 3 |
+| **FR-40** | Every entry shall be undoable immediately via an on-screen action. The window is deliberately **short (3.5 s)** so it does not obscure the grid; brevity is acceptable only because FR-42 keeps the same correction available indefinitely. | `snackbar.tsx`; test-plan step 3 |
 | **FR-41** | Undo shall be implemented as a **reversing ledger entry**. It shall never delete or edit the original, and both rows shall remain visible. | `ledger.db.test.ts` — "restores stock exactly, and the original row still exists" |
 | **FR-42** | The same correction mechanism shall remain available indefinitely from a history screen, not only during the undo window. | `ledger/index.tsx` |
 | **FR-43** | A reversal shall restore stock **exactly**, including at the batch level. | `ledger.db.test.ts` |
@@ -245,7 +252,10 @@ reading without glasses, in a brightly lit room. These are requirements, not pre
 | **NFR-9** | A successful write shall produce haptic feedback, because the user is often not looking at the screen. | `snackbar.tsx` |
 | **NFR-10** | The effect of a write shall be immediately visible on the originating screen, so physical reality is verified continuously rather than at month end. | test-plan step 2 |
 | **NFR-11** | The application shall open to the dose-entry screen. It shall not open to a dashboard. | `(tabs)/index.tsx` |
-| **NFR-12** | The interface shall be in English, portrait only. | `app.json` |
+| **NFR-12** | The interface shall be in English, portrait only, light theme only. No dark mode and no theming layer. | `app.json`; `tokens.ts` |
+| **NFR-13** | Navigation shall be four tabs at the top of the screen: Give dose, Add stock, Vaccines, More. | `(tabs)/_layout.tsx`; `ui/top-tabs.tsx` |
+| **NFR-14** | Give dose and Add stock move stock in opposite directions and are adjacent, so each context shall own a distinct accent colour carried through its tab, heading and primary button. Stock-level colours (amber/red/green) shall never be reused as a context accent. | `tokens.ts` `accentColor`; `ui/top-tabs.tsx` |
+| **NFR-15** | The top tab bar shall scroll horizontally rather than clip when enlarged text makes it wider than the screen. | `ui/top-tabs.tsx` |
 
 ### 4.2 Reliability and durability
 
@@ -372,3 +382,4 @@ appended; nothing is deleted; the original remains visible marked as corrected. 
 | R4 | The clinician reverts to the notebook because the application is slower. | High | FR-20, NFR-1 – NFR-11, NFR-30, NFR-31. This is the primary product risk, not a technical one. |
 | R5 | Storage is unencrypted; a lost unlocked phone exposes children's names. | Medium | NFR-42; minimal patient data (NFR-43). Full encryption at rest requires leaving Expo Go and is deferred. |
 | R6 | A single device means no second book of record. | Medium | Accepted. Schema is sync-ready (NFR-52) should this change. |
+| R7 | **Give dose and Add stock are adjacent tabs**, so a mis-tap records a delivery as a dose or vice versa — corrupting stock in opposite directions and hard to spot later. | Medium | NFR-14: distinct accent per context, carried through the tab, the heading and the wording of the primary button, so a wrong tab is visibly wrong before anything is written. Any mistake that does land is fully reversible (FR-41, FR-42) and visible in the history. |

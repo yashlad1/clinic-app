@@ -65,30 +65,30 @@ export default function EditVaccineScreen() {
 
         <Field label="How is it counted?">
           <View style={st.chipRow}>
-            <Chip label="Single doses" selected={unitMode === 'DOSE'} onPress={() => setUnitMode('DOSE')} />
-            <Chip label="Multi-dose vials" selected={unitMode === 'VIAL'} onPress={() => setUnitMode('VIAL')} />
+            <Chip accent="catalog" label="Single doses" selected={unitMode === 'DOSE'} onPress={() => setUnitMode('DOSE')} />
+            <Chip accent="catalog" label="Multi-dose vials" selected={unitMode === 'VIAL'} onPress={() => setUnitMode('VIAL')} />
           </View>
         </Field>
 
         {unitMode === 'VIAL' ? (
           <Field label="Doses per vial" hint="Check the box. This multiplies every count.">
-            <Stepper value={dosesPerVial} onChange={setDosesPerVial} min={1} max={50} quickValues={[1, 5, 10, 20]} />
+            <Stepper accent="catalog" value={dosesPerVial} onChange={setDosesPerVial} min={1} max={50} quickValues={[1, 5, 10, 20]} />
           </Field>
         ) : null}
 
         <Field label="Safety limit (doses)" hint="Warn me when stock falls to this level or below.">
-          <Stepper value={minBalance} onChange={setMinBalance} min={0} max={200} quickValues={[0, 5, 10, 20]} />
+          <Stepper accent="catalog" value={minBalance} onChange={setMinBalance} min={0} max={200} quickValues={[0, 5, 10, 20]} />
         </Field>
 
         <Field label="Show in the list?" hint="Hiding keeps all history; it never deletes anything.">
           <View style={st.chipRow}>
-            <Chip label="Shown" selected={active} onPress={() => setActive(true)} />
-            <Chip label="Hidden" selected={!active} onPress={() => setActive(false)} />
+            <Chip accent="catalog" label="Shown" selected={active} onPress={() => setActive(true)} />
+            <Chip accent="catalog" label="Hidden" selected={!active} onPress={() => setActive(false)} />
           </View>
         </Field>
       </ScrollView>
       <View style={st.footer}>
-        <BigButton label="SAVE" onPress={save} disabled={!name.trim()} />
+        <BigButton accent="catalog" label="SAVE" onPress={save} disabled={!name.trim()} />
       </View>
     </View>
   );

@@ -36,7 +36,13 @@ Violating any of these is a bug, however convenient the shortcut looks.
 2. **On-hand stock is always derived**, never stored as a mutable column. A `current_stock` integer
    *is* the paper notebook in a database — it is the artifact that drifts.
 3. **Vaccine identity comes from a `vaccines` row.** Free text is fine for *notes*; never for
-   *identity*. "Add new vaccine" must not be reachable from any entry screen.
+   *identity*. Adding a vaccine is reachable ONLY from the Vaccines tab (`catalog/new.tsx`), never
+   from a dose or stock entry screen.
+   **Removing a vaccine is a soft delete** (`deleted_at`), and a hard `DELETE` must never be added:
+   every past dose references that row, so deleting it would orphan the ledger and break the history
+   screen, the CSV export and every report that names the vaccine. The clinician sees a removal; the
+   record keeps everything that was ever given. Because `ux_vaccines_name` is partial on
+   `deleted_at IS NULL`, the name is freed, so a mistaken removal is undone by simply adding it back.
 4. **The clinician never does arithmetic.** The app converts vials to doses. If a screen asks a
    human to multiply, the screen is wrong.
 5. **Recording a dose must never be blocked** by a missing child name, a low-stock warning, or a
@@ -136,7 +142,8 @@ with **raw SQL behind a thin typed driver**, `expo-file-system`, `expo-sharing`,
 | `uuid` / `nanoid` | `expo-crypto` needs no `getRandomValues` polyfill |
 | `better-sqlite3` | Node 25 has built-in `node:sqlite` |
 | `papaparse` | We generate CSV and never parse it (restore uses the `.db`). A 15-line `toCsv()` wins |
-| Dark mode / theming libs | Clinics are bright. One palette is one palette to get contrast right in |
+| Dark mode / theming libs | Clinics are bright. One palette is one palette to get contrast right in. The user asked explicitly to keep the UI minimal — no dark mode, no theming |
+| `@react-navigation/material-top-tabs` + `react-native-pager-view` | Two native dependencies for a four-item segmented control. `src/ui/top-tabs.tsx` is ~120 lines and enforces the 56dp targets and per-tab accent directly |
 
 ---
 
@@ -258,19 +265,35 @@ under-recording just looks like theft.
 **Home is the dose-entry screen, not a dashboard.** Any design where the doctor lands on summary
 tiles and then taps "Give dose" has already lost.
 
+**Four tabs, at the TOP of the screen**, each owning an accent colour:
+
 ```
 app/
   _layout.tsx              SQLiteProvider + migration gate (holds splash)
-  (tabs)/index.tsx         ► GIVE DOSE   ← launch destination
-  (tabs)/stock.tsx         ► STOCK       (on-hand list + "Receive stock" FAB)
-  (tabs)/more.tsx          ► MORE        (everything infrequent, flat list)
+  (tabs)/_layout.tsx       tabBarPosition: 'top' + the custom TopTabBar
+  (tabs)/index.tsx         ► GIVE DOSE   blue    ← launch destination
+  (tabs)/stock.tsx         ► ADD STOCK   teal    (deliveries + current position)
+  (tabs)/vaccines.tsx      ► VACCINES    violet  (add new, remove old, edit)
+  (tabs)/more.tsx          ► MORE        slate   (everything infrequent)
   dose/[vaccineId].tsx     full-screen modal — dose entry
   receive/[vaccineId].tsx  full-screen modal — log a delivery
-  reports/today.tsx  reports/history.tsx
-  catalog/  children/  staff/  ledger/  backup/  settings/
+  catalog/new.tsx          full-screen modal — add a vaccine
+  catalog/[id].tsx         edit a vaccine
+  reports/today.tsx  children/  ledger/  backup/  settings/
 ```
 
-Three tabs. Nothing nested deeper than two levels.
+**The per-tab accent is a safety feature, not styling.** Give dose and Add stock are adjacent and
+move the ledger in OPPOSITE directions, so each owns a hue that carries through to the screen
+heading and the primary button on it (`GIVE n DOSES` in blue, `ADD TO STOCK` in teal). A wrong tab
+looks wrong before anything is written. Status colours — amber/red/green — are reserved for stock
+levels and are never reused as a context accent.
+
+The top bar is hand-written (`src/ui/top-tabs.tsx`) rather than pulling in
+`@react-navigation/material-top-tabs` + `react-native-pager-view`: two native dependencies for a
+four-item segmented control is a bad trade. It scrolls horizontally so it degrades gracefully at
+font scale 1.6× instead of clipping the last tab.
+
+Nothing nested deeper than two levels.
 
 **Give Dose:** status strip (`Sun 6 Sep · 12 doses today · 3 LOW`) → sticky search field (**not**
 autofocused; the keyboard must not cover the grid on arrival) → 2-column grid of large vaccine tiles
@@ -299,13 +322,17 @@ These are requirements, not preferences.
   full width, in the bottom third. Portrait locked.
 - **No icon-only controls** outside the tab bar. Every button gets a word — icons are ambiguous to
   someone coming from paper.
-- Type scale: numbers that matter **28–32pt bold**, tile titles **22pt semibold**, body **18pt**,
-  labels 16pt, **floor 14pt**. Body `#111827` on `#FFFFFF` (~16:1). No grey below `#4B5563`, no thin
-  weights.
+- Type scale: numbers that matter **28–34pt bold**, tile titles **22pt semibold**, body **18pt**,
+  labels 16pt, **floor 14pt**. Body `#0F172A` on `#FFFFFF` (~17:1). No grey below `#55606E`
+  (~6.2:1), no thin weights.
 - Semantic colours, all ≥4.5:1 on white: green `#15803D` ok, amber `#B45309` low, red `#B91C1C`
   out/expired. **Never encode state by colour alone** — always colour **plus a word** ("LOW",
-  "3 left") **plus** an icon. ~8% of men are red-green colourblind and a bright clinic window
-  destroys colour discrimination anyway.
+  "OUT", "CHECK"). ~8% of men are red-green colourblind and a bright clinic window destroys colour
+  discrimination anyway.
+- **Minimal, not decorated.** Depth comes from soft surfaces, hairline borders and subtle elevation
+  (`elevation()` in `tokens.ts`); larger radii do most of the modernising work. No gradients, no dark
+  mode, no animation beyond the toast fade and a slight press scale. "Modern" must never mean thin,
+  small or low-contrast.
 - **Must be tested at Android font scale 1.3× and 1.6×** plus display size Large. This cohort very
   likely has both turned up; it is the most-skipped check and the most likely to bite here.
 - **Steppers, not keyboards**, for any value ≤20 (long-press to repeat; `10/20/50` quick chips when
@@ -314,10 +341,12 @@ These are requirements, not preferences.
 - **Zero confirmation dialogs on the dose path.** Confirm only on genuine ambiguity: quantity > 1,
   backdating, resulting balance negative, expired lot, more than one open lot. A confirm dialog on
   the common path trains people to tap through confirms, which destroys its value on the rare path.
-- **Undo replaces confirmation.** 8s snackbar above the tab bar, large hit area, success haptic (she
-  is often not looking at the screen when her thumb lands). Undo **writes a reversing entry**, so it
-  stays available forever from the Ledger screen and the same code path serves a correction made
-  three weeks later.
+- **Undo replaces confirmation.** A **3.5s** snackbar at the bottom of the screen, large hit area,
+  success haptic (she is often not looking at the screen when her thumb lands). Kept deliberately
+  brief so it is not sitting over the grid while she moves to the next child. The cost of brevity is
+  low, because undo **writes a reversing entry** rather than deleting — so the same correction stays
+  available indefinitely from the All-entries screen, and the same code path serves a correction made
+  three weeks later. The toast is only the fast path.
 - **Show the consequence, not just the action.** The tile's stock number decrements immediately, so
   physical reality gets verified dozens of times a day instead of once at month-end. Highest-value
   single UI behaviour in the app.

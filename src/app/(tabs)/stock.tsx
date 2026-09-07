@@ -1,70 +1,111 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, Chip, Loading, T } from '../../ui/components';
-import { color, radius, space, touch, type, weight } from '../../ui/tokens';
+import { Badge, BigButton, Card, Chip, Input, Loading, T } from '../../ui/components';
+import { color, elevation, radius, space, type, weight } from '../../ui/tokens';
 import { useQuery } from '../../db/provider';
-import { movementStrip, stockOnHand } from '../../domain/reports';
+import { asOfLabel, movementStrip, stockOnHand } from '../../domain/reports';
 import { describeStockRow } from '../../domain/stock';
-import { asOfLabel } from '../../domain/reports';
 import { todayLocal } from '../../domain/time';
 
 /**
- * "Vaccines remaining today" — answered by showing BOTH readings reconciling on
- * one line, rather than picking one and being wrong half the time.
+ * ADD STOCK - deliveries in, plus the current position.
+ *
+ * Teal throughout, and the action reads "ADD STOCK", never "give". This screen
+ * moves the ledger in the opposite direction to Give dose, and it sits right
+ * next to it in the tab bar, so the visual separation is doing real work.
  */
-export default function StockScreen() {
+export default function AddStockScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const [q, setQ] = useState('');
   const [filter, setFilter] = useState<'all' | 'low'>('all');
   const today = todayLocal();
 
   const { data: rows, loading } = useQuery((db) => stockOnHand(db, { activeOnly: true }), []);
   const { data: strip } = useQuery((db) => movementStrip(db, today), [today]);
 
+  const decorated = useMemo(
+    () => (rows ?? []).map((r) => ({ row: r, d: describeStockRow(r) })),
+    [rows],
+  );
+  const lows = decorated.filter((x) => x.d.level !== 'OK');
+
+  const shown = useMemo(() => {
+    let list = filter === 'low' ? lows : [...lows, ...decorated.filter((x) => x.d.level === 'OK')];
+    if (q.trim()) {
+      const n = q.trim().toLowerCase();
+      list = list.filter((x) => x.row.name.toLowerCase().includes(n));
+    }
+    return list;
+  }, [decorated, lows, filter, q]);
+
   if (loading && !rows) return <Loading label="Loading stock" />;
 
-  const decorated = (rows ?? []).map((r) => ({ row: r, d: describeStockRow(r) }));
-  const lows = decorated.filter((x) => x.d.level !== 'OK');
-  const shown = filter === 'low' ? lows : [...lows, ...decorated.filter((x) => x.d.level === 'OK')];
+  const totalDoses = decorated.reduce((n, x) => n + x.row.on_hand_doses, 0);
 
   return (
-    <View style={[st.screen, { paddingTop: insets.top }]}>
-      <View style={st.header}>
-        <T style={st.title}>Stock</T>
-        <T style={st.asOf}>{asOfLabel()}</T>
-      </View>
-
-      {strip ? (
-        <View style={st.strip}>
-          {/* This is literally what the paper notebook was trying to be, with
-              the arithmetic done and self-checking. */}
-          <T style={st.stripText}>
-            Opening {strip.opening} · +Received {strip.received} · −Given {strip.given} · −Wasted{' '}
-            {strip.wasted}
-            {strip.adjusted !== 0 ? ` · Adjusted ${strip.adjusted > 0 ? '+' : ''}${strip.adjusted}` : ''}
-            {strip.corrections !== 0 ? ` · Corrections ${strip.corrections > 0 ? '+' : ''}${strip.corrections}` : ''}
-          </T>
-          <T style={st.stripNow}>= {strip.now} doses now</T>
-        </View>
-      ) : null}
-
-      <View style={st.filters}>
-        <Chip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
-        <Chip label={`Low stock (${lows.length})`} selected={filter === 'low'} onPress={() => setFilter('low')} />
-      </View>
-
+    <View style={st.screen}>
       <FlatList
         data={shown}
         keyExtractor={(x) => x.row.vaccine_id}
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 140 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={st.headerWrap}>
+            <T style={st.eyebrow}>{asOfLabel()}</T>
+            <T style={st.total}>{totalDoses} doses in stock</T>
+
+            {strip ? (
+              <Card tone="soft" style={{ marginTop: space.md }}>
+                <T style={st.stripLabel}>Today</T>
+                {/* What the paper notebook was trying to be, with the
+                    arithmetic done and self-checking. */}
+                <T style={st.stripText}>
+                  Opening {strip.opening} · +Received {strip.received} · −Given {strip.given} ·
+                  −Wasted {strip.wasted}
+                  {strip.adjusted !== 0
+                    ? ` · Adjusted ${strip.adjusted > 0 ? '+' : ''}${strip.adjusted}`
+                    : ''}
+                  {strip.corrections !== 0
+                    ? ` · Corrections ${strip.corrections > 0 ? '+' : ''}${strip.corrections}`
+                    : ''}
+                </T>
+                <T style={st.stripNow}>= {strip.now} doses now</T>
+              </Card>
+            ) : null}
+
+            <View style={{ marginTop: space.lg, gap: space.md }}>
+              <Input
+                placeholder="Search vaccine"
+                value={q}
+                onChangeText={setQ}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              <View style={st.chipRow}>
+                <Chip
+                  accent="stock"
+                  label="All"
+                  selected={filter === 'all'}
+                  onPress={() => setFilter('all')}
+                />
+                <Chip
+                  accent="stock"
+                  label={`Low stock (${lows.length})`}
+                  selected={filter === 'low'}
+                  onPress={() => setFilter('low')}
+                />
+              </View>
+            </View>
+          </View>
+        }
         renderItem={({ item }) => (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${item.row.name}, ${item.d.primary}`}
+            accessibilityLabel={`Add stock of ${item.row.name}. Currently ${item.d.primary}`}
             onPress={() => router.push(`/receive/${item.row.vaccine_id}`)}
-            style={st.row}
+            style={({ pressed }) => [st.row, pressed && { backgroundColor: color.stockSoft }]}
           >
             <View style={{ flex: 1 }}>
               <T style={st.rowName}>{item.row.name}</T>
@@ -77,60 +118,64 @@ export default function StockScreen() {
             {item.d.badge ? (
               <Badge text={item.d.badge} tone={item.d.level === 'LOW' ? 'low' : 'danger'} />
             ) : null}
+            <T style={st.plus}>+</T>
           </Pressable>
         )}
       />
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Receive stock"
-        onPress={() => router.push('/receive')}
-        style={st.fab}
-      >
-        <T style={st.fabText}>+ Receive stock</T>
-      </Pressable>
+      <View style={[st.footer, elevation(3)]}>
+        <BigButton
+          accent="stock"
+          label="ADD STOCK"
+          sublabel="Log a delivery that has arrived"
+          onPress={() => router.push('/receive')}
+        />
+      </View>
     </View>
   );
 }
 
 const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
-  header: { paddingHorizontal: space.lg, paddingTop: space.md },
-  title: { fontSize: type.hero, fontWeight: weight.bold, color: color.text },
-  asOf: { fontSize: type.label, color: color.textMuted },
-  strip: {
-    marginHorizontal: space.lg,
-    marginTop: space.md,
-    padding: space.md,
-    borderRadius: radius.md,
-    backgroundColor: color.surface,
-    borderWidth: 1,
-    borderColor: color.border,
+  headerWrap: { paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.md },
+  eyebrow: { fontSize: type.min, color: color.textMuted, fontWeight: weight.semibold },
+  total: { fontSize: type.hero, fontWeight: weight.bold, color: color.text, marginTop: 2 },
+  stripLabel: {
+    fontSize: type.min,
+    fontWeight: weight.bold,
+    color: color.textMuted,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: space.xs,
   },
-  stripText: { fontSize: type.min, color: color.textMuted, lineHeight: 20 },
-  stripNow: { fontSize: type.title, fontWeight: weight.bold, color: color.text, marginTop: space.xs },
-  filters: { flexDirection: 'row', gap: space.sm, padding: space.lg, paddingBottom: space.sm },
+  stripText: { fontSize: type.min, color: color.textMuted, lineHeight: 21 },
+  stripNow: { fontSize: type.title, fontWeight: weight.bold, color: color.text, marginTop: space.sm },
+  chipRow: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
+
   row: {
-    minHeight: touch.min + 8,
+    minHeight: 68,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
     paddingVertical: space.md,
-    borderBottomWidth: 1,
+    paddingHorizontal: space.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: color.border,
   },
   rowName: { fontSize: type.body, fontWeight: weight.semibold, color: color.text },
   rowSub: { fontSize: type.label, color: color.textMuted, marginTop: 2 },
-  fab: {
+  plus: { fontSize: type.big, fontWeight: weight.bold, color: color.stock, marginTop: -3 },
+
+  footer: {
     position: 'absolute',
-    left: space.lg,
-    right: space.lg,
-    bottom: space.lg,
-    minHeight: touch.cta,
-    borderRadius: radius.md,
-    backgroundColor: color.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: space.lg,
+    backgroundColor: color.bg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: color.border,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
   },
-  fabText: { color: color.onDark, fontSize: type.title, fontWeight: weight.bold },
 });

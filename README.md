@@ -94,6 +94,15 @@ go to the Play Store.
 
 ## Layout
 
+**Four tabs at the top**, each with its own accent colour: **Give dose** (blue), **Add stock**
+(teal), **Vaccines** (violet), **More** (slate). The colours are a safety feature — the first two
+move stock in opposite directions and sit next to each other, so hue, heading and button wording all
+differ to make a mis-tap obvious before anything is written.
+
+The UI is deliberately minimal: light theme only, no dark mode, no theming layer, no animation beyond
+the toast fade. Depth comes from soft surfaces and subtle elevation. "Modern" never means thin, small
+or low-contrast — 56dp targets, 18pt body text and a 14pt floor are hard requirements.
+
 ```
 src/
   app/              expo-router screens; (tabs)/index.tsx is Give Dose, the launch destination
@@ -111,7 +120,8 @@ src/
     reports.ts      the three required reports
     time.ts         local-date stamping and month-end expiry
     seed.ts         the Indian pediatric catalog
-  ui/               design tokens and components that enforce the accessibility rules
+  ui/               design tokens, the hand-written top tab bar, and components that
+                    enforce the accessibility rules
 docs/               SRS, ERD, waterfall, test plan, schema
 jira/               CSV backlog for Jira import
 ```

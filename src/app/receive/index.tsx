@@ -39,7 +39,7 @@ export default function ReceivePickScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.replace(`/receive/${item.vaccine_id}`)}
-              style={st.row}
+              style={({ pressed }) => [st.row, pressed && { backgroundColor: color.stockSoft }]}
             >
               <View style={{ flex: 1 }}>
                 <T style={st.name}>{item.name}</T>

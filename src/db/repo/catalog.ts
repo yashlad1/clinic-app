@@ -96,7 +96,76 @@ export async function setMinBalance(
   ]);
 }
 
-/** Retire, never delete - history must keep resolving. */
+/** Hide from the pickers but keep it in the catalog. Reversible in one tap. */
 export async function deactivateVaccine(db: Db, vaccineId: string, now: number = Date.now()) {
   await db.run(`UPDATE vaccines SET is_active = 0, updated_at = ? WHERE id = ?`, [now, vaccineId]);
+}
+
+export async function activateVaccine(db: Db, vaccineId: string, now: number = Date.now()) {
+  await db.run(`UPDATE vaccines SET is_active = 1, updated_at = ? WHERE id = ?`, [now, vaccineId]);
+}
+
+export interface VaccineUsage {
+  movements: number;
+  dosesGiven: number;
+  onHandDoses: number;
+}
+
+/**
+ * What removing this vaccine would cost. Drives the confirmation copy, so the
+ * clinician is told the consequence in real numbers instead of a generic
+ * "are you sure?".
+ */
+export async function vaccineUsage(db: Db, vaccineId: string): Promise<VaccineUsage> {
+  const row = await db.first<{ movements: number; given: number | null }>(
+    `SELECT COUNT(*) AS movements,
+            SUM(CASE WHEN movement_type = 'ADMINISTRATION' THEN -delta_doses ELSE 0 END) AS given
+       FROM v_movement_effective WHERE vaccine_id = ?`,
+    [vaccineId],
+  );
+  const stock = await db.first<{ n: number }>(
+    `SELECT on_hand_doses AS n FROM v_stock_on_hand WHERE vaccine_id = ?`,
+    [vaccineId],
+  );
+  return {
+    movements: row?.movements ?? 0,
+    dosesGiven: row?.given ?? 0,
+    onHandDoses: stock?.n ?? 0,
+  };
+}
+
+/**
+ * Remove a vaccine from the catalog.
+ *
+ * This is a SOFT delete - `deleted_at` is stamped and the row stays. A hard
+ * DELETE is not available and should not be added: every past dose references
+ * this row, so removing it would orphan the ledger and break the history
+ * screen, the CSV export and every report that names the vaccine.
+ *
+ * What the clinician sees is a removal: it disappears from the Give Dose grid,
+ * from the stock list and from every picker. What the ledger keeps is an intact
+ * record of everything that was ever given.
+ *
+ * Because `ux_vaccines_name` is partial on `deleted_at IS NULL`, the name is
+ * freed for reuse - so a mistake can be undone by simply adding it again.
+ */
+export async function removeVaccine(db: Db, vaccineId: string, now: number = Date.now()) {
+  await db.run(
+    `UPDATE vaccines SET deleted_at = ?, is_active = 0, updated_at = ? WHERE id = ?`,
+    [now, now, vaccineId],
+  );
+}
+
+/** Undo a removal. */
+export async function restoreVaccine(db: Db, vaccineId: string, now: number = Date.now()) {
+  await db.run(
+    `UPDATE vaccines SET deleted_at = NULL, is_active = 1, updated_at = ? WHERE id = ?`,
+    [now, vaccineId],
+  );
+}
+
+export function listRemovedVaccines(db: Db): Promise<Vaccine[]> {
+  return db.all<Vaccine>(
+    `SELECT * FROM vaccines WHERE deleted_at IS NOT NULL ORDER BY name COLLATE NOCASE`,
+  );
 }

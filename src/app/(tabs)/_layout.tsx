@@ -1,27 +1,29 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { color, touch, type, weight } from '../../ui/tokens';
+import { TopTabBar } from '../../ui/top-tabs';
 
 /**
- * Three tabs, with labels ALWAYS visible. Two would work, but separating Stock
- * from Give Dose prevents mis-tapping "I gave a dose" for "I received stock" -
- * a mix-up that corrupts the ledger in the opposite direction and is hard to
- * spot later.
+ * Four tabs, at the TOP, each owning an accent colour.
+ *
+ *   Give dose  - the launch destination and the dominant flow
+ *   Add stock  - deliveries, plus the current stock position
+ *   Vaccines   - add a new vaccine, remove an old one, fix doses-per-vial
+ *   More       - reports, backup, children, history, settings
+ *
+ * Give dose and Add stock are deliberately adjacent because that is what was
+ * asked for, but they move the ledger in opposite directions - so they are
+ * separated by hue, by heading and by the wording of their primary button
+ * rather than by distance.
  */
 export default function TabsLayout() {
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: color.primary,
-        tabBarInactiveTintColor: color.textMuted,
-        tabBarShowLabel: true,
-        tabBarStyle: { height: touch.tabBar, paddingBottom: 8, paddingTop: 6, borderTopColor: color.border },
-        tabBarLabelStyle: { fontSize: type.min, fontWeight: weight.semibold },
-      }}
+      tabBar={(props) => <TopTabBar {...props} />}
+      screenOptions={{ headerShown: false, tabBarPosition: 'top' }}
     >
       <Tabs.Screen name="index" options={{ title: 'Give dose' }} />
-      <Tabs.Screen name="stock" options={{ title: 'Stock' }} />
+      <Tabs.Screen name="stock" options={{ title: 'Add stock' }} />
+      <Tabs.Screen name="vaccines" options={{ title: 'Vaccines' }} />
       <Tabs.Screen name="more" options={{ title: 'More' }} />
     </Tabs>
   );

@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Input, Loading, T } from '../../ui/components';
-import { color, radius, space, touch, type, weight } from '../../ui/tokens';
+import { color, elevation, radius, space, type, weight } from '../../ui/tokens';
 import { useQuery } from '../../db/provider';
 import { dosesGivenTotals, vaccinesByUsage } from '../../domain/reports';
 import { describeStockRow } from '../../domain/stock';
@@ -20,7 +19,6 @@ import { BackupBanner } from '../../ui/backup-banner';
  */
 export default function GiveDoseScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [q, setQ] = useState('');
   const today = todayLocal();
   const since = daysAgoLocal(30);
@@ -41,34 +39,34 @@ export default function GiveDoseScreen() {
     );
   }, [rows, q]);
 
-  const lowCount = (rows ?? []).filter((r) => {
-    const d = describeStockRow(r);
-    return d.level === 'LOW' || d.level === 'OUT' || d.level === 'NEGATIVE';
-  }).length;
+  const lowCount = (rows ?? []).filter((r) => describeStockRow(r).level !== 'OK').length;
 
   if (loading && !rows) return <Loading label="Loading vaccines" />;
 
   return (
-    <View style={[st.screen, { paddingTop: insets.top }]}>
-      <View style={st.status}>
-        <T style={st.date}>{formatDayLabel()}</T>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/reports/today')}>
-          <T style={st.count}>
-            {dosesToday} {dosesToday === 1 ? 'dose' : 'doses'} today
-          </T>
-        </Pressable>
+    <View style={st.screen}>
+      <View style={st.header}>
+        <View style={{ flex: 1 }}>
+          <T style={st.eyebrow}>{formatDayLabel()}</T>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/reports/today')}>
+            <T style={st.count}>
+              {dosesToday} {dosesToday === 1 ? 'dose' : 'doses'} today
+            </T>
+          </Pressable>
+        </View>
         {lowCount > 0 ? (
-          <Pressable accessibilityRole="button" onPress={() => router.push('/stock')}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${lowCount} vaccines low on stock`}
+            onPress={() => router.push('/stock')}
+          >
             <Badge text={`${lowCount} LOW`} tone="low" />
           </Pressable>
         ) : null}
       </View>
 
-      <View style={st.bannerWrap}>
+      <View style={st.pad}>
         <BackupBanner />
-      </View>
-
-      <View style={st.searchWrap}>
         {/* Not autofocused: the keyboard must not cover the grid on arrival. */}
         <Input
           placeholder="Search vaccine"
@@ -86,37 +84,43 @@ export default function GiveDoseScreen() {
         keyExtractor={(r) => r.vaccine_id}
         numColumns={2}
         columnWrapperStyle={{ gap: space.md }}
-        contentContainerStyle={{ padding: space.md, paddingBottom: space.xxl, gap: space.md }}
+        contentContainerStyle={st.grid}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={{ padding: space.xl }}>
             <T style={st.emptyText}>
-              {q ? `No vaccine matches "${q}".` : 'No vaccines in the catalog yet.'}
+              {q
+                ? `No vaccine matches "${q}".`
+                : 'No vaccines yet. Add one from the Vaccines tab.'}
             </T>
           </View>
         }
         renderItem={({ item }) => {
           const d = describeStockRow(item);
-          const tone =
-            d.level === 'OK' ? color.text : d.level === 'LOW' ? color.low : color.danger;
+          const tone = d.level === 'OK' ? color.text : d.level === 'LOW' ? color.low : color.danger;
           return (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`${item.name}, ${d.primary}`}
               onPress={() => router.push(`/dose/${item.vaccine_id}`)}
-              style={({ pressed }) => [st.tile, pressed && st.tilePressed]}
+              style={({ pressed }) => [
+                st.tile,
+                elevation(1),
+                pressed && st.tilePressed,
+              ]}
             >
-              <T style={st.tileName} numberOfLines={2}>
-                {item.name}
-              </T>
-              <View style={{ flex: 1 }} />
-              <T style={[st.tileStock, { color: tone }]}>{d.primary}</T>
-              {d.secondary ? <T style={st.tileSecondary}>{d.secondary}</T> : null}
               {d.badge ? (
                 <View style={st.tileBadge}>
                   <Badge text={d.badge} tone={d.level === 'LOW' ? 'low' : 'danger'} />
                 </View>
               ) : null}
+              <T style={st.tileName} numberOfLines={3}>
+                {item.name}
+              </T>
+              <View style={{ flex: 1, minHeight: space.sm }} />
+              <T style={[st.tileStock, { color: tone }]}>{d.primary}</T>
+              {d.secondary ? <T style={st.tileSecondary}>{d.secondary}</T> : null}
             </Pressable>
           );
         }}
@@ -127,32 +131,35 @@ export default function GiveDoseScreen() {
 
 const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
-  status: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
     paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-    minHeight: 72,
+    paddingTop: space.lg,
+    paddingBottom: space.md,
   },
-  date: { fontSize: type.label, color: color.textMuted, fontWeight: weight.semibold },
-  count: { fontSize: type.title, fontWeight: weight.bold, color: color.text },
-  bannerWrap: { paddingHorizontal: space.md },
-  searchWrap: { paddingHorizontal: space.md, paddingBottom: space.sm },
-  emptyText: { fontSize: type.body, color: color.textMuted, textAlign: 'center' },
+  eyebrow: {
+    fontSize: type.min,
+    color: color.textMuted,
+    fontWeight: weight.semibold,
+    letterSpacing: 0.4,
+  },
+  count: { fontSize: type.hero, fontWeight: weight.bold, color: color.text, marginTop: 2 },
+  pad: { paddingHorizontal: space.lg, paddingBottom: space.md, gap: space.md },
+  emptyText: { fontSize: type.body, color: color.textMuted, textAlign: 'center', lineHeight: 26 },
 
+  grid: { paddingHorizontal: space.lg, paddingBottom: space.xxl, gap: space.md },
   tile: {
     flex: 1,
-    minHeight: 132,
-    borderWidth: 2,
-    borderColor: color.border,
+    minHeight: 138,
     borderRadius: radius.lg,
-    padding: space.md,
+    padding: space.lg,
     backgroundColor: color.bg,
   },
-  tilePressed: { backgroundColor: '#EFF6FF', borderColor: color.primary },
-  tileName: { fontSize: type.title, fontWeight: weight.semibold, color: color.text },
-  tileStock: { fontSize: type.body, fontWeight: weight.bold, marginTop: space.sm },
+  tilePressed: { backgroundColor: color.doseSoft, transform: [{ scale: 0.985 }] },
+  tileName: { fontSize: type.title, fontWeight: weight.semibold, color: color.text, lineHeight: 27 },
+  tileStock: { fontSize: type.body, fontWeight: weight.bold },
   tileSecondary: { fontSize: type.min, color: color.textMuted, marginTop: 2 },
-  tileBadge: { position: 'absolute', top: space.sm, right: space.sm },
+  tileBadge: { position: 'absolute', top: space.md, right: space.md, zIndex: 1 },
 });

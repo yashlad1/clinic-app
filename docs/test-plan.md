@@ -122,7 +122,7 @@ Run **every step, in order, with the phone in airplane mode for the entire run.*
 | --- | --- | --- | --- |
 | 1 | Cold launch. Time it with a stopwatch. | Give Dose grid usable in **under 3 s**. Catalog is pre-loaded. | NFR-30, FR-1 |
 | 2 | Give one dose of a single-dose vaccine to a **new child created inline**. | Tile decrements by 1; haptic fires; undo appears; "doses today" increments. **Three taps.** | FR-20, FR-21, FR-30, NFR-9, NFR-10 |
-| 3 | **Undo it.** | Stock restored; today's count decrements; **All entries shows BOTH the original and the correction** — nothing vanished. | FR-40, FR-41, FR-42 |
+| 3 | **Undo it** within the 3.5 s window. | Stock restored; today's count decrements; **All entries shows BOTH the original and the correction** — nothing vanished. Then confirm the same entry is still correctable from All entries *after* the toast has gone. | FR-40, FR-41, FR-42 |
 | 4 | Give one dose of a 10-dose-vial vaccine. | Stock falls by 1 dose; the tile shows both denominations, e.g. `29 doses` / `2 vials + 9 doses`. | FR-3, FR-11 |
 | 5 | Give 9 more from that vial. | Arithmetic stays correct across the vial boundary; no rounding drift. | FR-3 |
 | 6 | Receive a delivery: 5 vials, batch `ABC123`, expiry 06/2027, bought. | Stock rises by 5 × doses-per-vial; the batch appears as a chip on the dose screen. | FR-10 – FR-14 |
@@ -133,9 +133,12 @@ Run **every step, in order, with the phone in airplane mode for the entire run.*
 | 11 | **Restore.** On a second device, or after clearing app data, import that zip. | Preview shows counts matching the backup; after restoring, the data is back. **This validates the entire durability story and is the test everyone skips.** | FR-74 – FR-77, NFR-24 |
 | 12 | Swipe the app away mid-entry, then relaunch. | No crash, no half-written row, no corruption. | NFR-22 |
 | 13 | Confirm the whole run above was in **airplane mode**. | Everything worked. | NFR-20 |
-| 14 | Android Settings → Display → font size **Largest** + display size **Large**. Re-run steps 2 and 6. | Nothing clipped, nothing unreachable, no button pushed off screen. | NFR-1, NFR-6 |
+| 14 | Android Settings → Display → font size **Largest** + display size **Large**. Re-run steps 2 and 6. | Nothing clipped, nothing unreachable, no button pushed off screen. **The top tab bar scrolls sideways rather than hiding the last tab.** | NFR-1, NFR-6, NFR-15 |
 | 15 | Install the APK over the previous one with `adb install -r`. | **All data preserved.** | NFR-23 |
 | 16 | Open **Vaccines**, change a doses-per-vial value, and save. | The change is reflected in stock display immediately; history still resolves. | FR-3, FR-6 |
+| 17 | On the **Vaccines** tab, add a new vaccine, then try to add it a second time. | It appears in the Give dose grid immediately. The duplicate is refused with a plain message naming the conflict. | FR-9a, FR-9b |
+| 18 | **Remove** a vaccine that has stock and history. | The confirmation states the doses in stock and doses given. After removing: gone from Give dose, Add stock and search — but **All entries still shows its past doses by name**, and it appears under the Removed filter. Add it back and confirm its stock returns. | FR-9c – FR-9g |
+| 19 | Tap between **Give dose** and **Add stock** several times. | The two are unmistakable: different accent colour on the tab, the heading and the primary button (`GIVE n DOSES` vs `ADD TO STOCK`). | NFR-14 |
 
 ### Then: a two-week soak
 

@@ -33,7 +33,8 @@ export default function RootLayout() {
             screenOptions={{
               headerStyle: { backgroundColor: color.bg },
               headerTitleStyle: { color: color.text, fontSize: 20, fontWeight: '600' },
-              headerTintColor: color.primary,
+              headerShadowVisible: false,
+              headerTintColor: color.dose,
               contentStyle: { backgroundColor: color.bg },
             }}
           >
@@ -45,7 +46,10 @@ export default function RootLayout() {
             <Stack.Screen name="receive/index" options={{ presentation: 'modal', title: 'Receive stock' }} />
             <Stack.Screen name="receive/[vaccineId]" options={{ presentation: 'modal', title: 'Receive stock' }} />
             <Stack.Screen name="reports/today" options={{ title: 'Given today' }} />
-            <Stack.Screen name="catalog/index" options={{ title: 'Vaccines' }} />
+            <Stack.Screen
+              name="catalog/new"
+              options={{ presentation: 'modal', title: 'New vaccine' }}
+            />
             <Stack.Screen name="catalog/[id]" options={{ title: 'Edit vaccine' }} />
             <Stack.Screen name="children/index" options={{ title: 'Children' }} />
             <Stack.Screen name="ledger/index" options={{ title: 'All entries' }} />

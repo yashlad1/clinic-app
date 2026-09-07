@@ -3,12 +3,16 @@ import {
   ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput,
   type TextInputProps, View, type ViewStyle,
 } from 'react-native';
-import { MAX_FONT_SCALE, color, radius, space, touch, type, weight } from './tokens';
+import {
+  MAX_FONT_SCALE, type Accent, accentColor, accentSoft, color, elevation, radius, space, touch,
+  type, weight,
+} from './tokens';
 
 /**
- * Every component here encodes a rule from CLAUDE.md section 8. If a change
- * makes a target smaller than 56dp, text smaller than 14pt, or a state visible
- * by colour alone, it is a regression regardless of how it looks.
+ * Every component here encodes a rule from CLAUDE.md section 8. The look is
+ * modern - soft surfaces, real elevation, generous radii - but none of the
+ * accessibility floors move: 56dp targets, 18pt body, 14pt absolute minimum,
+ * and no state carried by colour alone.
  */
 
 const scale = { maxFontSizeMultiplier: MAX_FONT_SCALE };
@@ -27,33 +31,67 @@ export function Scroll({ children, style }: { children: React.ReactNode; style?:
       style={[s.screen, style]}
       contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl * 2 }}
       keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
   );
 }
 
+/** A raised panel. The main structural element now that borders are hairlines. */
+export function Card({
+  children,
+  style,
+  tone,
+  onPress,
+}: {
+  children: React.ReactNode;
+  style?: ViewStyle;
+  tone?: Accent | 'soft';
+  onPress?: () => void;
+}) {
+  const bg = tone && tone !== 'soft' ? accentSoft[tone] : tone === 'soft' ? color.surface : color.bg;
+  const body = (
+    <View style={[s.card, { backgroundColor: bg }, tone ? null : elevation(1), style]}>
+      {children}
+    </View>
+  );
+  if (!onPress) return body;
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}>
+      {body}
+    </Pressable>
+  );
+}
+
+export function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <T style={s.sectionTitle}>{children}</T>;
+}
+
 /**
- * Primary call to action: 64dp tall, full width, high contrast, and it always
- * carries a WORD. No icon-only buttons anywhere outside the tab bar - icons are
- * ambiguous to someone coming from paper.
+ * Primary call to action: 64dp tall, full width, and it always carries a WORD.
+ * The `accent` prop is load-bearing, not decoration - it is what makes "GIVE A
+ * DOSE" and "ADD TO STOCK" impossible to mistake for one another.
  */
 export function BigButton({
   label,
   onPress,
-  tone = 'primary',
+  accent = 'dose',
+  variant = 'solid',
   disabled,
   sublabel,
+  danger,
 }: {
   label: string;
   onPress: () => void;
-  tone?: 'primary' | 'neutral' | 'danger';
+  accent?: Accent;
+  variant?: 'solid' | 'outline';
   disabled?: boolean;
   sublabel?: string;
+  danger?: boolean;
 }) {
-  const bg =
-    tone === 'primary' ? color.primary : tone === 'danger' ? color.danger : color.surface;
-  const fg = tone === 'neutral' ? color.text : color.onDark;
+  const base = danger ? color.danger : accentColor[accent];
+  const solid = variant === 'solid';
   return (
     <Pressable
       accessibilityRole="button"
@@ -63,22 +101,51 @@ export function BigButton({
       onPress={onPress}
       style={({ pressed }) => [
         s.bigButton,
-        { backgroundColor: disabled ? color.border : pressed ? color.primaryPressed : bg },
-        tone === 'neutral' && { borderWidth: 2, borderColor: color.borderStrong },
+        solid
+          ? { backgroundColor: disabled ? color.surfaceSunken : base }
+          : { backgroundColor: color.bg, borderWidth: 2, borderColor: disabled ? color.border : base },
+        solid && !disabled ? elevation(2) : null,
+        pressed && !disabled ? { transform: [{ scale: 0.985 }], opacity: 0.92 } : null,
       ]}
     >
-      <T style={[s.bigButtonLabel, { color: disabled ? color.textMuted : fg }]}>{label}</T>
+      <T
+        style={[
+          s.bigButtonLabel,
+          { color: disabled ? color.textMuted : solid ? color.onAccent : base },
+        ]}
+      >
+        {label}
+      </T>
       {sublabel ? (
-        <T style={[s.bigButtonSub, { color: disabled ? color.textMuted : fg }]}>{sublabel}</T>
+        <T
+          style={[
+            s.bigButtonSub,
+            { color: disabled ? color.textMuted : solid ? 'rgba(255,255,255,0.85)' : color.textMuted },
+          ]}
+        >
+          {sublabel}
+        </T>
       ) : null}
     </Pressable>
   );
 }
 
-export function SecondaryButton({ label, onPress }: { label: string; onPress: () => void }) {
+export function SecondaryButton({
+  label,
+  onPress,
+  accent = 'dose',
+  danger,
+}: {
+  label: string;
+  onPress: () => void;
+  accent?: Accent;
+  danger?: boolean;
+}) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={s.secondary}>
-      <T style={s.secondaryLabel}>{label}</T>
+      <T style={[s.secondaryLabel, { color: danger ? color.danger : accentColor[accent] }]}>
+        {label}
+      </T>
     </Pressable>
   );
 }
@@ -87,12 +154,18 @@ export function SecondaryButton({ label, onPress }: { label: string; onPress: ()
  * A state badge. Colour is ALWAYS paired with this word - roughly 8% of men are
  * red-green colourblind, and a sunlit clinic window flattens colour on any phone.
  */
-export function Badge({ text, tone }: { text: string; tone: 'low' | 'danger' | 'ok' | 'neutral' }) {
+export function Badge({
+  text,
+  tone,
+}: {
+  text: string;
+  tone: 'low' | 'danger' | 'ok' | 'neutral';
+}) {
   const map = {
-    low: { bg: color.lowBg, fg: color.low },
-    danger: { bg: color.dangerBg, fg: color.danger },
-    ok: { bg: '#DCFCE7', fg: color.ok },
-    neutral: { bg: color.surface, fg: color.textMuted },
+    low: { bg: color.lowSoft, fg: color.low },
+    danger: { bg: color.dangerSoft, fg: color.danger },
+    ok: { bg: color.okSoft, fg: color.ok },
+    neutral: { bg: color.surfaceSunken, fg: color.textMuted },
   }[tone];
   return (
     <View style={[s.badge, { backgroundColor: map.bg }]}>
@@ -106,21 +179,33 @@ export function Chip({
   selected,
   onPress,
   sublabel,
+  accent = 'dose',
+  compact,
 }: {
   label: string;
   selected?: boolean;
   onPress: () => void;
   sublabel?: string;
+  accent?: Accent;
+  compact?: boolean;
 }) {
+  const base = accentColor[accent];
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
       onPress={onPress}
-      style={[s.chip, selected && s.chipSelected]}
+      style={({ pressed }) => [
+        s.chip,
+        compact ? s.chipCompact : null,
+        selected
+          ? { backgroundColor: accentSoft[accent], borderColor: base }
+          : { backgroundColor: color.surface, borderColor: 'transparent' },
+        pressed ? { opacity: 0.8 } : null,
+      ]}
     >
-      <T style={[s.chipLabel, selected && s.chipLabelSelected]}>{label}</T>
-      {sublabel ? <T style={[s.chipSub, selected && s.chipLabelSelected]}>{sublabel}</T> : null}
+      <T style={[s.chipLabel, selected ? { color: base } : null]}>{label}</T>
+      {sublabel ? <T style={s.chipSub}>{sublabel}</T> : null}
     </Pressable>
   );
 }
@@ -138,12 +223,14 @@ export function Stepper({
   min = 1,
   max = 999,
   quickValues,
+  accent = 'dose',
 }: {
   value: number;
   onChange: (n: number) => void;
   min?: number;
   max?: number;
   quickValues?: number[];
+  accent?: Accent;
 }) {
   const step = (delta: number) => onChange(Math.min(max, Math.max(min, value + delta)));
   return (
@@ -155,7 +242,7 @@ export function Stepper({
           onPress={() => step(-1)}
           onLongPress={() => step(-5)}
           disabled={value <= min}
-          style={[s.stepperBtn, value <= min && s.stepperBtnDisabled]}
+          style={({ pressed }) => [s.stepperBtn, value <= min && s.stepperBtnDisabled, pressed && { opacity: 0.7 }]}
         >
           <T style={s.stepperSign}>−</T>
         </Pressable>
@@ -168,7 +255,7 @@ export function Stepper({
           onPress={() => step(1)}
           onLongPress={() => step(5)}
           disabled={value >= max}
-          style={[s.stepperBtn, value >= max && s.stepperBtnDisabled]}
+          style={({ pressed }) => [s.stepperBtn, value >= max && s.stepperBtnDisabled, pressed && { opacity: 0.7 }]}
         >
           <T style={s.stepperSign}>+</T>
         </Pressable>
@@ -176,7 +263,14 @@ export function Stepper({
       {quickValues?.length ? (
         <View style={s.chipRow}>
           {quickValues.map((q) => (
-            <Chip key={q} label={String(q)} selected={value === q} onPress={() => onChange(q)} />
+            <Chip
+              key={q}
+              compact
+              accent={accent}
+              label={String(q)}
+              selected={value === q}
+              onPress={() => onChange(q)}
+            />
           ))}
         </View>
       ) : null}
@@ -184,7 +278,15 @@ export function Stepper({
   );
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+export function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <View style={{ marginBottom: space.xl }}>
       <T style={s.fieldLabel}>{label}</T>
@@ -194,6 +296,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
   );
 }
 
+/** Filled input rather than a boxed one - fewer lines on screen, same target size. */
 export function Input(props: TextInputProps) {
   return (
     <TextInput
@@ -210,23 +313,30 @@ export function Row({
   subtitle,
   right,
   onPress,
+  last,
 }: {
   title: string;
   subtitle?: string;
   right?: React.ReactNode;
   onPress?: () => void;
+  last?: boolean;
 }) {
   const body = (
-    <View style={s.row}>
+    <View style={[s.row, last && { borderBottomWidth: 0 }]}>
       <View style={{ flex: 1 }}>
         <T style={s.rowTitle}>{title}</T>
         {subtitle ? <T style={s.rowSub}>{subtitle}</T> : null}
       </View>
       {right}
+      {onPress ? <T style={s.chevron}>›</T> : null}
     </View>
   );
   return onPress ? (
-    <Pressable accessibilityRole="button" onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => (pressed ? { backgroundColor: color.pressed } : null)}
+    >
       {body}
     </Pressable>
   ) : (
@@ -247,7 +357,10 @@ export function Banner({
   onAction?: () => void;
   onDismiss?: () => void;
 }) {
-  const map = tone === 'danger' ? { bg: color.dangerBg, fg: color.danger } : { bg: color.lowBg, fg: color.low };
+  const map =
+    tone === 'danger'
+      ? { bg: color.dangerSoft, fg: color.danger }
+      : { bg: color.lowSoft, fg: color.low };
   return (
     <View style={[s.banner, { backgroundColor: map.bg }]}>
       <T style={[s.bannerText, { color: map.fg }]}>{text}</T>
@@ -270,7 +383,7 @@ export function Banner({
 export function Loading({ label = 'Loading' }: { label?: string }) {
   return (
     <View style={s.center}>
-      <ActivityIndicator size="large" color={color.primary} />
+      <ActivityIndicator size="large" color={color.dose} />
       <T style={s.rowSub}>{label}</T>
     </View>
   );
@@ -280,15 +393,37 @@ export function Empty({ title, hint }: { title: string; hint?: string }) {
   return (
     <View style={s.center}>
       <T style={s.emptyTitle}>{title}</T>
-      {hint ? <T style={s.rowSub}>{hint}</T> : null}
+      {hint ? <T style={[s.rowSub, { textAlign: 'center' }]}>{hint}</T> : null}
     </View>
   );
 }
 
 export const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.md },
-  emptyTitle: { fontSize: type.title, fontWeight: weight.semibold, color: color.text, textAlign: 'center' },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: space.xl,
+    gap: space.md,
+  },
+  emptyTitle: {
+    fontSize: type.title,
+    fontWeight: weight.semibold,
+    color: color.text,
+    textAlign: 'center',
+  },
+
+  card: { borderRadius: radius.lg, padding: space.lg },
+  sectionTitle: {
+    fontSize: type.min,
+    fontWeight: weight.bold,
+    color: color.textMuted,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginTop: space.xl,
+    marginBottom: space.sm,
+  },
 
   bigButton: {
     minHeight: touch.cta,
@@ -297,14 +432,14 @@ export const s = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: space.lg,
   },
-  bigButtonLabel: { fontSize: type.title, fontWeight: weight.bold },
-  bigButtonSub: { fontSize: type.min, marginTop: 2 },
+  bigButtonLabel: { fontSize: type.title, fontWeight: weight.bold, letterSpacing: 0.3 },
+  bigButtonSub: { fontSize: type.min, marginTop: 2, fontWeight: weight.medium },
 
-  secondary: { minHeight: touch.min, justifyContent: 'center', paddingHorizontal: space.md },
-  secondaryLabel: { fontSize: type.body, fontWeight: weight.semibold, color: color.primary },
+  secondary: { minHeight: touch.min, justifyContent: 'center', alignSelf: 'flex-start' },
+  secondaryLabel: { fontSize: type.body, fontWeight: weight.semibold },
 
-  badge: { paddingHorizontal: space.sm, paddingVertical: 3, borderRadius: radius.pill },
-  badgeText: { fontSize: type.min, fontWeight: weight.bold, letterSpacing: 0.5 },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },
+  badgeText: { fontSize: type.min, fontWeight: weight.bold, letterSpacing: 0.6 },
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
   chip: {
@@ -313,56 +448,67 @@ export const s = StyleSheet.create({
     paddingHorizontal: space.lg,
     borderRadius: radius.md,
     borderWidth: 2,
-    borderColor: color.border,
-    backgroundColor: color.bg,
   },
-  chipSelected: { borderColor: color.primary, backgroundColor: '#EFF6FF' },
+  chipCompact: { paddingHorizontal: space.md, minWidth: touch.min },
   chipLabel: { fontSize: type.body, fontWeight: weight.semibold, color: color.text },
-  chipLabelSelected: { color: color.primary },
-  chipSub: { fontSize: type.min, color: color.textMuted },
+  chipSub: { fontSize: type.min, color: color.textMuted, marginTop: 1 },
 
   stepperRow: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
   stepperBtn: {
     width: touch.min,
     height: touch.min,
     borderRadius: radius.md,
-    borderWidth: 2,
-    borderColor: color.borderStrong,
+    backgroundColor: color.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperBtnDisabled: { borderColor: color.border },
+  stepperBtnDisabled: { opacity: 0.4 },
   stepperSign: { fontSize: type.big, fontWeight: weight.bold, color: color.text },
-  stepperValue: { fontSize: type.hero, fontWeight: weight.bold, color: color.text, minWidth: 64, textAlign: 'center' },
+  stepperValue: {
+    fontSize: type.hero,
+    fontWeight: weight.bold,
+    color: color.text,
+    minWidth: 72,
+    textAlign: 'center',
+  },
 
-  fieldLabel: { fontSize: type.label, fontWeight: weight.semibold, color: color.textMuted, marginBottom: space.xs },
-  fieldHint: { fontSize: type.min, color: color.textMuted, marginBottom: space.sm },
+  fieldLabel: {
+    fontSize: type.label,
+    fontWeight: weight.semibold,
+    color: color.text,
+    marginBottom: space.xs,
+  },
+  fieldHint: { fontSize: type.min, color: color.textMuted, marginBottom: space.sm, lineHeight: 20 },
   input: {
     minHeight: touch.min,
-    borderWidth: 2,
-    borderColor: color.border,
     borderRadius: radius.md,
-    paddingHorizontal: space.md,
+    paddingHorizontal: space.lg,
     fontSize: type.body,
     color: color.text,
-    backgroundColor: color.bg,
+    backgroundColor: color.surface,
   },
 
   row: {
-    minHeight: touch.min,
+    minHeight: touch.min + 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
     paddingVertical: space.md,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: color.border,
   },
   rowTitle: { fontSize: type.body, fontWeight: weight.semibold, color: color.text },
   rowSub: { fontSize: type.label, color: color.textMuted, marginTop: 2 },
+  chevron: { fontSize: type.big, color: color.borderStrong, marginTop: -4 },
 
-  banner: { borderRadius: radius.md, padding: space.md, marginBottom: space.md },
-  bannerText: { fontSize: type.label, fontWeight: weight.semibold },
+  banner: { borderRadius: radius.md, padding: space.lg, marginBottom: space.md },
+  bannerText: { fontSize: type.label, fontWeight: weight.semibold, lineHeight: 22 },
   bannerActions: { flexDirection: 'row', gap: space.sm, marginTop: space.sm },
-  bannerBtn: { minHeight: touch.min - 12, justifyContent: 'center', paddingHorizontal: space.md, borderRadius: radius.sm },
+  bannerBtn: {
+    minHeight: touch.min - 12,
+    justifyContent: 'center',
+    paddingHorizontal: space.md,
+    borderRadius: radius.sm,
+  },
   bannerBtnText: { fontSize: type.label, fontWeight: weight.bold },
 });

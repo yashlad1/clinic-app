@@ -30,7 +30,7 @@ export default function SettingsScreen() {
       </Field>
       <BigButton
         label="Save clinic name"
-        tone="neutral"
+        variant="outline"
         onPress={async () => {
           await setSetting(db, SETTING.clinicName, clinic.trim());
           bump();
@@ -53,7 +53,7 @@ export default function SettingsScreen() {
       </Field>
       <BigButton
         label="Add"
-        tone="neutral"
+        variant="outline"
         disabled={!newStaff.trim()}
         onPress={async () => {
           await createStaff(db, newStaff.trim(), deviceId);

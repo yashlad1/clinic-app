@@ -17,7 +17,16 @@ import { color, radius, space, touch, type, weight } from './tokens';
  * the Ledger screen.
  */
 
-const UNDO_MS = 8000;
+/**
+ * Short on purpose. Long enough to notice a mistake and reach for it, short
+ * enough that it is not sitting over the grid while she moves to the next
+ * child.
+ *
+ * The cost of being brief is low: undo writes a reversing ledger entry rather
+ * than deleting, so the SAME correction stays available indefinitely from the
+ * All-entries screen. This toast is only the fast path.
+ */
+const UNDO_MS = 3500;
 
 interface Toast {
   message: string;
@@ -95,18 +104,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 const st = StyleSheet.create({
-  wrap: { position: 'absolute', left: 0, right: 0, bottom: touch.tabBar + space.md, paddingHorizontal: space.md },
+  // The tab bar is at the TOP now, so the toast sits at the bottom of the
+  // screen where the thumb already is.
+  wrap: { position: 'absolute', left: 0, right: 0, bottom: space.xl, paddingHorizontal: space.md },
   bar: {
     minHeight: touch.cta,
     backgroundColor: color.text,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: space.lg,
     paddingRight: space.sm,
     gap: space.sm,
   },
-  text: { flex: 1, color: color.onDark, fontSize: type.label, fontWeight: weight.semibold },
+  text: { flex: 1, color: color.onAccent, fontSize: type.label, fontWeight: weight.semibold },
   // A large hit area: this is tapped in a hurry, one-handed.
   undo: { minWidth: 88, minHeight: touch.min, alignItems: 'center', justifyContent: 'center' },
   undoText: { color: '#93C5FD', fontSize: type.body, fontWeight: weight.bold, letterSpacing: 1 },

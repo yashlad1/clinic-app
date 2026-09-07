@@ -250,7 +250,7 @@ const st = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, alignItems: 'center' },
   warn: { fontSize: type.label, fontWeight: weight.semibold, color: color.low, marginTop: space.sm },
   addRow: { minHeight: touch.min, justifyContent: 'center', marginTop: space.sm },
-  addText: { fontSize: type.body, fontWeight: weight.semibold, color: color.primary },
+  addText: { fontSize: type.body, fontWeight: weight.semibold, color: color.dose },
   footer: {
     padding: space.lg,
     gap: space.md,
@@ -259,5 +259,5 @@ const st = StyleSheet.create({
     backgroundColor: color.bg,
   },
   skip: { minHeight: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
-  skipText: { fontSize: type.body, fontWeight: weight.semibold, color: color.primary },
+  skipText: { fontSize: type.body, fontWeight: weight.semibold, color: color.dose },
 });
