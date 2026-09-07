@@ -47,7 +47,8 @@ for them.
 | [`docs/SRS.md`](./docs/SRS.md) | 94 numbered requirements, each traced to a test |
 | [`docs/ERD.md`](./docs/ERD.md) | Data model, and why the ledger looks like it does |
 | [`docs/waterfall.md`](./docs/waterfall.md) | SDLC phases, Gantt timeline, sprint contents |
-| [`docs/test-plan.md`](./docs/test-plan.md) | Three test layers and the 16-step on-phone script |
+| [`docs/test-plan.md`](./docs/test-plan.md) | Three test layers and the 19-step on-phone script |
+| [`docs/RELEASE.md`](./docs/RELEASE.md) | Building the standalone APK, archiving the keystore, and shipping OTA updates |
 | [`docs/schema.sql`](./docs/schema.sql) | Reference DDL, generated from the migrations |
 
 ## Stack
@@ -83,14 +84,27 @@ adb reverse tcp:8081 tcp:8081
 
 ## Release
 
+`npm start` is a *development* loop — it needs the Mac awake and reachable. For the clinic, build a
+standalone APK that installs once and then runs fully offline, with no laptop and no QR code:
+
 ```sh
-eas build -p android --profile production   # APK, built in Expo's cloud
-adb install -r clinic-stock.apk             # -r reinstalls IN PLACE, preserving the database
-eas update --branch production              # JS-only fixes, including new migrations, ship OTA
+npx eas login          # one time, interactive
+npm run eas:setup      # eas init && eas update:configure
+npm run build:apk      # APK built in Expo's cloud; ends with a download URL
+npm run keystore       # DO THIS DAY ONE — archive the keystore, see below
 ```
 
-The production profile builds an **APK, not an AAB**, because this app is sideloaded and will never
-go to the Play Store.
+Send the URL over WhatsApp; she taps it, allows installs from that source once, and installs.
+
+Afterwards, JavaScript fixes — including new migrations — ship over the air without a reinstall:
+
+```sh
+npm run ota -- "what changed"
+```
+
+Full detail, including the free-tier limits and what to check with her on first install, is in
+[`docs/RELEASE.md`](./docs/RELEASE.md). The production profile builds an **APK, not an AAB**, because
+this app is sideloaded and will never go to the Play Store.
 
 ## Layout
 
