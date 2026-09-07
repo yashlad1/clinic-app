@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Badge, Input, Loading, T, useBottomInset } from '../../ui/components';
+import { Badge, ErrorState, Input, Loading, T, useBottomInset } from '../../ui/components';
 import { color, elevation, radius, space, type, weight } from '../../ui/tokens';
 import { useQuery } from '../../db/provider';
 import { dosesGivenTotals, vaccinesByUsage } from '../../domain/reports';
@@ -24,7 +24,7 @@ export default function GiveDoseScreen() {
   const today = todayLocal();
   const since = daysAgoLocal(30);
 
-  const { data: rows, loading } = useQuery((db) => vaccinesByUsage(db, since), [since]);
+  const { data: rows, loading, error, reload } = useQuery((db) => vaccinesByUsage(db, since), [since]);
   const { data: given } = useQuery((db) => dosesGivenTotals(db, today), [today]);
 
   const dosesToday = (given ?? []).reduce((n, g) => n + g.doses, 0);
@@ -70,6 +70,7 @@ export default function GiveDoseScreen() {
     ] as const
   ).filter(([, n]) => n > 0);
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load your vaccines" />;
   if (loading && !rows) return <Loading label="Loading vaccines" />;
 
   return (

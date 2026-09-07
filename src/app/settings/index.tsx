@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { BigButton, Field, Input, Loading, Row, T, useBottomInset } from '../../ui/components';
+import { BigButton, ErrorState, Field, Input, Loading, Row, T, useBottomInset } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
+import { useAction } from '../../ui/use-action';
 import { SETTING, getSetting, setSetting } from '../../db/repo/settings';
 import { createStaff, listStaff } from '../../db/repo/staff';
 import { LATEST_VERSION } from '../../db/migrate';
@@ -12,16 +13,18 @@ export default function SettingsScreen() {
   const bottomInset = useBottomInset();
   const { db, deviceId, appVersion, bump } = useDb();
   const toast = useToast();
+  const run = useAction();
   const [clinic, setClinic] = useState('');
   const [newStaff, setNewStaff] = useState('');
 
   const { data: saved } = useQuery((d) => getSetting(d, SETTING.clinicName));
-  const { data: staff } = useQuery((d) => listStaff(d, false));
+  const { data: staff, error, reload } = useQuery((d) => listStaff(d, false));
 
   useEffect(() => {
     if (saved !== null && saved !== undefined) setClinic(saved);
   }, [saved]);
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load settings" />;
   if (!staff) return <Loading />;
 
   return (
@@ -32,11 +35,11 @@ export default function SettingsScreen() {
       <BigButton
         label="Save clinic name"
         variant="outline"
-        onPress={async () => {
+        onPress={() => void run('save the clinic name', async () => {
           await setSetting(db, SETTING.clinicName, clinic.trim());
           bump();
           toast.show('Saved.');
-        }}
+        })}
       />
 
       <T style={st.section}>Who enters data</T>
@@ -56,12 +59,12 @@ export default function SettingsScreen() {
         label="Add"
         variant="outline"
         disabled={!newStaff.trim()}
-        onPress={async () => {
+        onPress={() => void run('add this person', async () => {
           await createStaff(db, newStaff.trim(), deviceId);
           setNewStaff('');
           bump();
           toast.show('Added.');
-        }}
+        })}
       />
 
       <T style={st.section}>About</T>

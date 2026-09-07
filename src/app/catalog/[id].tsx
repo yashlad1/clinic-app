@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BigButton, Chip, Field, Footer, Input, Loading, SecondaryButton, Stepper, T } from '../../ui/components';
+import { BigButton, Chip, ErrorState, Field, Footer, Input, Loading, SecondaryButton, Stepper, T } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
+import { useAction } from '../../ui/use-action';
 import type { UnitMode, Vaccine } from '../../domain/types';
 
 /**
@@ -15,10 +16,11 @@ import type { UnitMode, Vaccine } from '../../domain/types';
 export default function EditVaccineScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const run = useAction();
   const { db, bump } = useDb();
   const toast = useToast();
 
-  const { data: vaccine } = useQuery(
+  const { data: vaccine, error, reload } = useQuery(
     (d) => d.first<Vaccine>(`SELECT * FROM vaccines WHERE id = ?`, [id]),
     [id],
   );
@@ -38,9 +40,10 @@ export default function EditVaccineScreen() {
     setActive(vaccine.is_active === 1);
   }, [vaccine]);
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load this vaccine" />;
   if (!vaccine) return <Loading />;
 
-  const save = async () => {
+  const save = () => void run('save this vaccine', async () => {
     // A single-dose presentation cannot claim more than one dose per vial; the
     // database enforces this too, so keep the UI consistent with it.
     const dpv = unitMode === 'DOSE' ? 1 : Math.max(1, dosesPerVial);
@@ -54,7 +57,7 @@ export default function EditVaccineScreen() {
     bump();
     toast.show(`Saved ${name.trim()}.`);
     router.back();
-  };
+  });
 
   return (
     <View style={st.screen}>

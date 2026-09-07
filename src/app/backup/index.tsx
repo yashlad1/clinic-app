@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { BigButton, Loading, Row, T, useBottomInset } from '../../ui/components';
+import { BigButton, ErrorState, Loading, Row, T, useBottomInset } from '../../ui/components';
 import { color, radius, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
@@ -21,13 +21,14 @@ export default function BackupScreen() {
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
 
-  const { data: meta } = useQuery(async (d) => ({
+  const { data: meta, error, reload } = useQuery(async (d) => ({
     lastBackupAt: Number(await getSetting(d, SETTING.lastBackupAt)) || null,
     dosesSinceBackup: await getNumber(d, SETTING.dosesSinceBackup, 0),
     current: await describeCurrent(d),
   }));
   const { data: local, reload: reloadLocal } = useQuery(async () => listLocalBackups());
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load your backup details" />;
   if (!meta) return <Loading />;
 
   const doExport = async () => {

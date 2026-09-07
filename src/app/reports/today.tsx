@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { BigButton, Empty, Input, Loading, Row, SecondaryButton, T, useBottomInset } from '../../ui/components';
+import { BigButton, Empty, ErrorState, Input, Loading, Row, SecondaryButton, T, useBottomInset } from '../../ui/components';
+import { useAction } from '../../ui/use-action';
 import { color, radius, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { asOfLabel, dosesGiven, dosesGivenTotals, movementStrip } from '../../domain/reports';
@@ -9,16 +10,18 @@ import { formatDayLabel, formatTime12h, todayLocal } from '../../domain/time';
 
 /** "Vaccines given today, time, count" - the notebook page, arithmetic included. */
 export default function TodayScreen() {
+  const run = useAction();
   const bottomInset = useBottomInset();
   const { db, bump } = useDb();
   const today = todayLocal();
   const [editing, setEditing] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState('');
 
-  const { data: lines, loading } = useQuery((d) => dosesGiven(d, today), [today]);
+  const { data: lines, loading, error, reload } = useQuery((d) => dosesGiven(d, today), [today]);
   const { data: totals } = useQuery((d) => dosesGivenTotals(d, today), [today]);
   const { data: strip } = useQuery((d) => movementStrip(d, today), [today]);
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load today's doses" />;
   if (loading && !lines) return <Loading />;
 
   const total = (totals ?? []).reduce((n, t) => n + t.doses, 0);
@@ -81,12 +84,12 @@ export default function TodayScreen() {
                   />
                   <BigButton
                     label="Save name"
-                    onPress={async () => {
+                    onPress={() => void run("save this child's name", async () => {
                       await fillMissingChild(db, { movementId: l.id, patientLabel: nameDraft.trim() });
                       bump();
                       setEditing(null);
                       setNameDraft('');
-                    }}
+                    })}
                     disabled={!nameDraft.trim()}
                   />
                 </View>

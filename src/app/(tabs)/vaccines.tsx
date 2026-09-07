@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Badge, BigButton, Card, Chip, Footer, Input, Loading, T, useBottomInset } from '../../ui/components';
+import { Badge, BigButton, Card, Chip, ErrorState, Footer, Input, Loading, T, useBottomInset } from '../../ui/components';
 import { color, radius, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
+import { useAction } from '../../ui/use-action';
 import {
   activateVaccine, deactivateVaccine, listRemovedVaccines, listVaccines, removeVaccine,
   restoreVaccine, vaccineUsage,
@@ -28,10 +29,11 @@ export default function VaccinesScreen() {
   const bottomInset = useBottomInset();
   const { db, bump } = useDb();
   const toast = useToast();
+  const run = useAction();
   const [q, setQ] = useState('');
   const [showRemoved, setShowRemoved] = useState(false);
 
-  const { data: active, loading } = useQuery((d) => listVaccines(d, false), []);
+  const { data: active, loading, error, reload } = useQuery((d) => listVaccines(d, false), []);
   const { data: removed } = useQuery((d) => listRemovedVaccines(d), []);
 
   const rows = useMemo(() => {
@@ -43,9 +45,10 @@ export default function VaccinesScreen() {
     );
   }, [active, removed, showRemoved, q]);
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load the catalog" />;
   if (loading && !active) return <Loading label="Loading vaccines" />;
 
-  const confirmRemove = async (id: string, name: string) => {
+  const confirmRemove = (id: string, name: string) => void run('check this vaccine', async () => {
     // Tell her the consequence in real numbers rather than "are you sure?".
     const usage = await vaccineUsage(db, id);
     const lines = [`"${name}" will be removed from every list and picker.`];
@@ -67,17 +70,20 @@ export default function VaccinesScreen() {
       {
         text: 'Remove',
         style: 'destructive',
-        onPress: async () => {
-          await removeVaccine(db, id);
-          bump();
-          toast.show(`${name} removed.`, async () => {
-            await restoreVaccine(db, id);
+        onPress: () =>
+          void run(`remove ${name}`, async () => {
+            await removeVaccine(db, id);
             bump();
-          });
-        },
+            toast.show(`${name} removed.`, async () => {
+              await run(`add ${name} back`, async () => {
+                await restoreVaccine(db, id);
+                bump();
+              });
+            });
+          }),
       },
     ]);
-  };
+  });
 
   return (
     <View style={st.screen}>
@@ -157,11 +163,11 @@ export default function VaccinesScreen() {
             {showRemoved ? (
               <Pressable
                 accessibilityRole="button"
-                onPress={async () => {
+                onPress={() => void run(`add ${item.name} back`, async () => {
                   await restoreVaccine(db, item.id);
                   bump();
                   toast.show(`${item.name} added back.`);
-                }}
+                })}
                 style={st.action}
               >
                 <T style={[st.actionText, { color: color.catalog }]}>Add back</T>
@@ -172,11 +178,11 @@ export default function VaccinesScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={item.is_active ? `Hide ${item.name}` : `Show ${item.name}`}
-                  onPress={async () => {
+                  onPress={() => void run(item.is_active ? `hide ${item.name}` : `show ${item.name}`, async () => {
                     if (item.is_active) await deactivateVaccine(db, item.id);
                     else await activateVaccine(db, item.id);
                     bump();
-                  }}
+                  })}
                   style={st.action}
                 >
                   <T style={[st.actionText, { color: color.textMuted }]}>

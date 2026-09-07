@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Badge, BigButton, Card, Chip, Footer, Input, Loading, T, useBottomInset } from '../../ui/components';
+import { Badge, BigButton, Card, Chip, ErrorState, Footer, Input, Loading, T, useBottomInset } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useQuery } from '../../db/provider';
 import { asOfLabel, movementStrip, stockOnHand } from '../../domain/reports';
@@ -22,7 +22,7 @@ export default function AddStockScreen() {
   const [filter, setFilter] = useState<'all' | 'low'>('all');
   const today = todayLocal();
 
-  const { data: rows, loading } = useQuery((db) => stockOnHand(db, { activeOnly: true }), []);
+  const { data: rows, loading, error, reload } = useQuery((db) => stockOnHand(db, { activeOnly: true }), []);
   const { data: strip } = useQuery((db) => movementStrip(db, today), [today]);
 
   const decorated = useMemo(
@@ -43,6 +43,7 @@ export default function AddStockScreen() {
     return list;
   }, [decorated, lows, filter, q]);
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load your stock" />;
   if (loading && !rows) return <Loading label="Loading stock" />;
 
   const totalDoses = decorated.reduce((n, x) => n + x.row.on_hand_doses, 0);

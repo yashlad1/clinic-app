@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Input, Loading, T, useBottomInset } from '../../ui/components';
+import { ErrorState, Input, Loading, T, useBottomInset } from '../../ui/components';
 import { color, radius, space, touch, type, weight } from '../../ui/tokens';
 import { useQuery } from '../../db/provider';
 import { stockOnHand } from '../../domain/reports';
@@ -12,7 +12,7 @@ export default function ReceivePickScreen() {
   const bottomInset = useBottomInset();
   const router = useRouter();
   const [q, setQ] = useState('');
-  const { data: rows, loading } = useQuery((db) => stockOnHand(db, { activeOnly: true }), []);
+  const { data: rows, loading, error, reload } = useQuery((db) => stockOnHand(db, { activeOnly: true }), []);
 
   const filtered = useMemo(() => {
     const all = rows ?? [];
@@ -21,6 +21,7 @@ export default function ReceivePickScreen() {
     return all.filter((r) => r.name.toLowerCase().includes(n) || (r.generic_name ?? '').toLowerCase().includes(n));
   }, [rows, q]);
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load your vaccines" />;
   if (loading && !rows) return <Loading />;
 
   return (

@@ -4,6 +4,7 @@ import {
   type TextInputProps, View, type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { friendlyError } from './errors';
 import {
   MAX_FONT_SCALE, type Accent, accentColor, accentSoft, color, elevation, radius, space, touch,
   type, weight,
@@ -89,6 +90,33 @@ export function Footer({
       ]}
     >
       {children}
+    </View>
+  );
+}
+
+/**
+ * A read failed. Shown instead of a spinner that would otherwise never resolve.
+ *
+ * `useQuery` has always caught read errors and exposed them, but no screen
+ * rendered them, so any failed read became an indefinite <Loading/> with no
+ * explanation and no way forward. Retry is wired to useQuery's `reload`, which
+ * matters because the most likely causes here - a locked database mid-write, a
+ * transient failure - succeed on a second attempt.
+ */
+export function ErrorState({
+  error,
+  onRetry,
+  what = 'load this screen',
+}: {
+  error: Error;
+  onRetry?: () => void;
+  what?: string;
+}) {
+  return (
+    <View style={s.center}>
+      <T style={s.errorTitle}>Could not {what}</T>
+      <T style={s.errorBody}>{friendlyError(error, { what })}</T>
+      {onRetry ? <SecondaryButton label="Try again" onPress={onRetry} /> : null}
     </View>
   );
 }
@@ -477,6 +505,8 @@ export const s = StyleSheet.create({
     padding: space.xl,
     gap: space.md,
   },
+  errorTitle: { fontSize: type.title, fontWeight: weight.bold, color: color.text, textAlign: 'center' },
+  errorBody: { fontSize: type.body, color: color.textMuted, textAlign: 'center', lineHeight: 26 },
   emptyTitle: {
     fontSize: type.title,
     fontWeight: weight.semibold,

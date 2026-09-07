@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BigButton, Chip, Field, Footer, Input, Loading, Stepper, T } from '../../ui/components';
+import { BigButton, Chip, ErrorState, Field, Footer, Input, Loading, Stepper, T } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
+import { useAction } from '../../ui/use-action';
 import { newId } from '../../domain/ids';
 import { recordReceipt, reverseMovement } from '../../domain/ledger';
 import { findOrCreateLot } from '../../db/repo/lots';
@@ -22,6 +23,7 @@ import type { FundingSource, StockRow } from '../../domain/types';
 export default function ReceiveScreen() {
   const { vaccineId } = useLocalSearchParams<{ vaccineId: string }>();
   const router = useRouter();
+  const run = useAction();
   const { db, deviceId, bump } = useDb();
   const toast = useToast();
 
@@ -32,12 +34,13 @@ export default function ReceiveScreen() {
   const [funding, setFunding] = useState<FundingSource>('PRIVATE');
   const [saving, setSaving] = useState(false);
 
-  const { data: vaccine } = useQuery(
+  const { data: vaccine, error, reload } = useQuery(
     (d) => d.first<StockRow>(`SELECT * FROM v_stock_on_hand WHERE vaccine_id = ?`, [vaccineId]),
     [vaccineId],
   );
   const { data: staff } = useQuery((d) => listStaff(d), []);
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load this vaccine" />;
   if (!vaccine) return <Loading />;
 
   const byVial = vaccine.unit_mode === 'VIAL' && vaccine.doses_per_vial > 1;
@@ -53,7 +56,7 @@ export default function ReceiveScreen() {
   const save = async () => {
     if (saving || !lotNumber.trim()) return;
     setSaving(true);
-    try {
+    const ok = await run('add this delivery to stock', async () => {
       const lotId = await findOrCreateLot(
         db,
         {
@@ -73,13 +76,14 @@ export default function ReceiveScreen() {
       });
       bump();
       toast.show(`Added ${doses} doses of ${vaccine.name}.`, async () => {
-        await reverseMovement(db, { deviceId }, { clientActionId: newId(), movementId: movement.id });
-        bump();
+        await run('undo that delivery', async () => {
+          await reverseMovement(db, { deviceId }, { clientActionId: newId(), movementId: movement.id });
+          bump();
+        });
       });
-      router.back();
-    } finally {
-      setSaving(false);
-    }
+    });
+    setSaving(false);
+    if (ok) router.back();
   };
 
   return (

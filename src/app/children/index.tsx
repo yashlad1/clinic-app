@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { Empty, Input, Loading, Row, T, useBottomInset } from '../../ui/components';
+import { Empty, ErrorState, Input, Loading, Row, T, useBottomInset } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useQuery } from '../../db/provider';
 import { searchPatients } from '../../db/repo/patients';
@@ -8,7 +8,7 @@ import { searchPatients } from '../../db/repo/patients';
 export default function ChildrenScreen() {
   const bottomInset = useBottomInset();
   const [q, setQ] = useState('');
-  const { data, loading } = useQuery(
+  const { data, loading, error, reload } = useQuery(
     (db) =>
       q.trim()
         ? searchPatients(db, q.trim(), 100)
@@ -19,6 +19,7 @@ export default function ChildrenScreen() {
     [q],
   );
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load the children list" />;
   if (loading && !data) return <Loading />;
 
   return (

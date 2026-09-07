@@ -29,13 +29,24 @@ import { color, radius, space, touch, type, weight } from './tokens';
  */
 const UNDO_MS = 3500;
 
+/**
+ * An error toast stays up longer and is not dismissed by a success haptic.
+ * A failed write is the one message she must not miss - if she misses it she
+ * will assume the dose was recorded, and recorded stock starts drifting from
+ * the fridge, which is the whole failure this app exists to prevent.
+ */
+const ERROR_MS = 7000;
+
 interface Toast {
   message: string;
   onUndo?: () => void | Promise<void>;
+  tone?: 'default' | 'error';
 }
 
 interface UndoApi {
   show: (message: string, onUndo?: () => void | Promise<void>) => void;
+  /** A failure. Longer, red, warning haptic, and never carries an undo. */
+  showError: (message: string) => void;
 }
 
 const UndoContext = createContext<UndoApi | null>(null);
@@ -71,19 +82,30 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [hide, opacity],
   );
 
+  const showError = useCallback(
+    (message: string) => {
+      if (timer.current) clearTimeout(timer.current);
+      setToast({ message, tone: 'error' });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+      Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+      timer.current = setTimeout(hide, ERROR_MS);
+    },
+    [hide, opacity],
+  );
+
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
 
   const insets = useSafeAreaInsets();
 
   return (
-    <UndoContext.Provider value={{ show }}>
+    <UndoContext.Provider value={{ show, showError }}>
       {children}
       {toast ? (
         <Animated.View
           style={[st.wrap, { opacity, bottom: space.xl + insets.bottom }]}
           pointerEvents="box-none"
         >
-          <View style={st.bar}>
+          <View style={[st.bar, toast.tone === 'error' && st.barError]}>
             <T style={st.text} numberOfLines={2}>
               {toast.message}
             </T>
@@ -124,6 +146,7 @@ const st = StyleSheet.create({
     paddingRight: space.sm,
     gap: space.sm,
   },
+  barError: { backgroundColor: color.danger },
   text: { flex: 1, color: color.onAccent, fontSize: type.label, fontWeight: weight.semibold },
   // A large hit area: this is tapped in a hurry, one-handed.
   undo: { minWidth: 88, minHeight: touch.min, alignItems: 'center', justifyContent: 'center' },

@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BigButton, Chip, Empty, Field, Footer, Input, Loading, SecondaryButton, Stepper, T } from '../../ui/components';
+import { BigButton, Chip, Empty, ErrorState, Field, Footer, Input, Loading, SecondaryButton, Stepper, T } from '../../ui/components';
 import { color, radius, space, touch, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
+import { useAction } from '../../ui/use-action';
 import { newId } from '../../domain/ids';
 import { recordAdministration, reverseMovement, findRecentSimilar } from '../../domain/ledger';
 import { lotsInStock, lastUsedLot, isExpired } from '../../db/repo/lots';
@@ -28,6 +29,7 @@ export default function DoseScreen() {
   const router = useRouter();
   const { db, deviceId, bump } = useDb();
   const toast = useToast();
+  const run = useAction();
   const today = todayLocal();
 
   const [doses, setDoses] = useState(1);
@@ -37,7 +39,7 @@ export default function DoseScreen() {
   const [childQuery, setChildQuery] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const { data: vaccine } = useQuery(
+  const { data: vaccine, error, reload } = useQuery(
     (d) => d.first<StockRow>(`SELECT * FROM v_stock_on_hand WHERE vaccine_id = ?`, [vaccineId]),
     [vaccineId],
   );
@@ -55,6 +57,7 @@ export default function DoseScreen() {
   const selected = useMemo(() => lots?.find((l) => l.lot_id === effectiveLot) ?? null, [lots, effectiveLot]);
   const expired = selected ? isExpired(selected, today) : false;
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load this vaccine" />;
   if (!vaccine) return <Loading label="Loading vaccine" />;
 
   const stock = describeStock(
@@ -73,7 +76,10 @@ export default function DoseScreen() {
   const write = async (skipChild: boolean) => {
     if (saving) return;
     setSaving(true);
-    try {
+    // A failed write must SAY so. Silently doing nothing here is the worst
+    // outcome in the app: she would assume the dose was recorded, and stock
+    // would start drifting from the fridge.
+    const ok = await run('record this dose', async () => {
       // Minted here, at the tap, and reused for any retry of THIS intent.
       const clientActionId = newId();
 
@@ -103,14 +109,17 @@ export default function DoseScreen() {
       toast.show(`${doses} × ${vaccine.name} recorded${who}.${note}`, async () => {
         // Undo writes a REVERSING ENTRY. It never deletes, so the correction is
         // auditable and stays available from the Ledger screen forever.
-        const r = await reverseMovement(db, { deviceId }, { clientActionId: newId(), movementId: movement.id });
-        if (r.created) await bumpDosesSinceBackup(db, -doses);
-        bump();
+        await run('undo that dose', async () => {
+          const r = await reverseMovement(db, { deviceId }, { clientActionId: newId(), movementId: movement.id });
+          if (r.created) await bumpDosesSinceBackup(db, -doses);
+          bump();
+        });
       });
-      router.back();
-    } finally {
-      setSaving(false);
-    }
+    });
+    setSaving(false);
+    // Only leave the screen if it actually saved, so a failure leaves her
+    // where she can read the message and try again.
+    if (ok) router.back();
   };
 
   /**

@@ -1,6 +1,7 @@
 import React from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { Badge, Empty, Loading, SecondaryButton, T, useBottomInset } from '../../ui/components';
+import { Badge, Empty, ErrorState, Loading, SecondaryButton, T, useBottomInset } from '../../ui/components';
+import { useAction } from '../../ui/use-action';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { newId } from '../../domain/ids';
@@ -29,10 +30,11 @@ interface LedgerLine {
  * remains possible here forever - the 8-second snackbar is only the fast path.
  */
 export default function LedgerScreen() {
+  const run = useAction();
   const bottomInset = useBottomInset();
   const { db, deviceId, bump } = useDb();
 
-  const { data, loading } = useQuery((d) =>
+  const { data, loading, error, reload } = useQuery((d) =>
     d.all<LedgerLine>(
       `SELECT m.id, m.local_date, m.local_time, m.movement_type, m.delta_doses,
               v.name AS vaccine_name, l.lot_number, m.patient_label,
@@ -47,6 +49,7 @@ export default function LedgerScreen() {
     ),
   );
 
+  if (error) return <ErrorState error={error} onRetry={reload} what="load your entries" />;
   if (loading && !data) return <Loading />;
   if (!data?.length) return <Empty title="No entries yet" />;
 
@@ -83,10 +86,12 @@ export default function LedgerScreen() {
               {!undone && item.movement_type !== 'REVERSAL' ? (
                 <SecondaryButton
                   label="Correct this entry"
-                  onPress={async () => {
-                    await reverseMovement(db, { deviceId }, { clientActionId: newId(), movementId: item.id });
-                    bump();
-                  }}
+                  onPress={() =>
+                    void run('correct this entry', async () => {
+                      await reverseMovement(db, { deviceId }, { clientActionId: newId(), movementId: item.id });
+                      bump();
+                    })
+                  }
                 />
               ) : null}
             </View>
