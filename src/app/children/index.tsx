@@ -1,0 +1,59 @@
+import React, { useState } from 'react';
+import { FlatList, StyleSheet, View } from 'react-native';
+import { Empty, Input, Loading, Row, T } from '../../ui/components';
+import { color, space, type, weight } from '../../ui/tokens';
+import { useQuery } from '../../db/provider';
+import { searchPatients } from '../../db/repo/patients';
+
+export default function ChildrenScreen() {
+  const [q, setQ] = useState('');
+  const { data, loading } = useQuery(
+    (db) =>
+      q.trim()
+        ? searchPatients(db, q.trim(), 100)
+        : db.all<{ id: string; name: string; dob: string | null; guardian_phone: string | null }>(
+            `SELECT id, name, dob, guardian_phone FROM patients
+              WHERE deleted_at IS NULL ORDER BY name COLLATE NOCASE LIMIT 200`,
+          ),
+    [q],
+  );
+
+  if (loading && !data) return <Loading />;
+
+  return (
+    <View style={st.screen}>
+      <View style={{ padding: space.lg }}>
+        <Input
+          placeholder="Search by name or phone"
+          value={q}
+          onChangeText={setQ}
+          autoCorrect={false}
+          autoCapitalize="words"
+        />
+      </View>
+      <FlatList
+        data={data ?? []}
+        keyExtractor={(p) => p.id}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl }}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          <Empty
+            title={q ? `No child matches "${q}"` : 'No children saved yet'}
+            hint="Children are added while recording a dose."
+          />
+        }
+        renderItem={({ item }) => (
+          <Row title={item.name} subtitle={item.guardian_phone ?? item.dob ?? undefined} />
+        )}
+      />
+      <T style={st.note}>
+        Names are stored only on this phone. Keep a screen lock on the device.
+      </T>
+    </View>
+  );
+}
+
+const st = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: color.bg },
+  note: { fontSize: type.min, color: color.textMuted, padding: space.lg },
+});

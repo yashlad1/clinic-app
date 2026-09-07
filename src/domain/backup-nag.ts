@@ -1,0 +1,84 @@
+/**
+ * When to nag about backups.
+ *
+ * The COUNT trigger matters as much as the time trigger: a busy immunisation
+ * morning is exactly when 40 unbacked entries are sitting on one phone. Time
+ * alone would stay quiet through it.
+ *
+ * The nag is never modal and never blocking. It must not stand between the
+ * doctor and logging a dose.
+ */
+
+export type NagLevel = 'none' | 'due' | 'overdue';
+
+export const NAG = {
+  dueAfterDays: 3,
+  dueAfterDoses: 25,
+  overdueAfterDays: 14,
+} as const;
+
+export interface NagInput {
+  lastBackupAt: number | null;
+  dosesSinceBackup: number;
+  now: number;
+  /** Suppresses the banner for 24h after "Later". */
+  snoozedUntil?: number | null;
+}
+
+export interface Nag {
+  level: NagLevel;
+  message: string;
+}
+
+import { formatDate } from './time';
+
+const DAY = 86_400_000;
+
+const dateLabel = formatDate;
+
+export function backupNag(input: NagInput): Nag {
+  const { lastBackupAt, dosesSinceBackup, now } = input;
+
+  // Never backed up, but nothing to lose yet - stay quiet rather than nag on a
+  // freshly installed app.
+  if (lastBackupAt === null && dosesSinceBackup === 0) return { level: 'none', message: '' };
+
+  const days = lastBackupAt === null ? Infinity : Math.floor((now - lastBackupAt) / DAY);
+
+  if (lastBackupAt === null) {
+    return {
+      level: dosesSinceBackup >= NAG.dueAfterDoses ? 'overdue' : 'due',
+      message: `Back up now — ${dosesSinceBackup} ${dosesSinceBackup === 1 ? 'entry' : 'entries'} have never been backed up.`,
+    };
+  }
+
+  if (days >= NAG.overdueAfterDays) {
+    return {
+      level: 'overdue',
+      message: `Back up now — last backup was ${days} days ago (${dateLabel(lastBackupAt)}).`,
+    };
+  }
+
+  // A snooze only silences the amber state. Overdue is not snoozable, because
+  // at two weeks the risk outweighs the annoyance.
+  if (input.snoozedUntil && now < input.snoozedUntil) return { level: 'none', message: '' };
+
+  if (days >= NAG.dueAfterDays || dosesSinceBackup >= NAG.dueAfterDoses) {
+    const reason =
+      dosesSinceBackup >= NAG.dueAfterDoses
+        ? `${dosesSinceBackup} entries since ${dateLabel(lastBackupAt)}`
+        : `last backup ${dateLabel(lastBackupAt)}`;
+    return { level: 'due', message: `Back up now — ${reason}.` };
+  }
+
+  return { level: 'none', message: '' };
+}
+
+export function lastBackupLabel(lastBackupAt: number | null): string {
+  if (lastBackupAt === null) return 'Last backup: never';
+  const d = new Date(lastBackupAt);
+  const h = d.getHours();
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  const time = `${h12}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
+  return `Last backup: ${dateLabel(lastBackupAt)}, ${time}`;
+}

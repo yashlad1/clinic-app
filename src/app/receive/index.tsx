@@ -1,0 +1,72 @@
+import React, { useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Input, Loading, T } from '../../ui/components';
+import { color, radius, space, touch, type, weight } from '../../ui/tokens';
+import { useQuery } from '../../db/provider';
+import { stockOnHand } from '../../domain/reports';
+import { describeStockRow } from '../../domain/stock';
+
+/** Pick which vaccine arrived. Same grid idea as Give Dose, reused. */
+export default function ReceivePickScreen() {
+  const router = useRouter();
+  const [q, setQ] = useState('');
+  const { data: rows, loading } = useQuery((db) => stockOnHand(db, { activeOnly: true }), []);
+
+  const filtered = useMemo(() => {
+    const all = rows ?? [];
+    if (!q.trim()) return all;
+    const n = q.trim().toLowerCase();
+    return all.filter((r) => r.name.toLowerCase().includes(n) || (r.generic_name ?? '').toLowerCase().includes(n));
+  }, [rows, q]);
+
+  if (loading && !rows) return <Loading />;
+
+  return (
+    <View style={st.screen}>
+      <View style={{ padding: space.lg }}>
+        <T style={st.hint}>Which vaccine arrived?</T>
+        <Input placeholder="Search vaccine" value={q} onChangeText={setQ} autoCorrect={false} autoCapitalize="none" />
+      </View>
+      <FlatList
+        data={filtered}
+        keyExtractor={(r) => r.vaccine_id}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl }}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => {
+          const d = describeStockRow(item);
+          return (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.replace(`/receive/${item.vaccine_id}`)}
+              style={st.row}
+            >
+              <View style={{ flex: 1 }}>
+                <T style={st.name}>{item.name}</T>
+                <T style={st.sub}>
+                  {d.primary}
+                  {d.secondary ? ` · ${d.secondary}` : ''}
+                </T>
+              </View>
+            </Pressable>
+          );
+        }}
+      />
+    </View>
+  );
+}
+
+const st = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: color.bg },
+  hint: { fontSize: type.title, fontWeight: weight.semibold, color: color.text, marginBottom: space.md },
+  row: {
+    minHeight: touch.min + 8,
+    justifyContent: 'center',
+    paddingVertical: space.md,
+    borderBottomWidth: 1,
+    borderBottomColor: color.border,
+    borderRadius: radius.sm,
+  },
+  name: { fontSize: type.body, fontWeight: weight.semibold, color: color.text },
+  sub: { fontSize: type.label, color: color.textMuted, marginTop: 2 },
+});

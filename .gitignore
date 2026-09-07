@@ -1,0 +1,67 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+example
+
+# generated native folders
+/ios
+/android
+
+# ---------------------------------------------------------------------------
+# THE REPO IS PUBLIC. Nothing clinic-identifying or patient-related may ever be
+# committed. A single accidental clinic.db would publish real children's names.
+# ---------------------------------------------------------------------------
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+backups/
+clinic-backup-*.zip
+*.zip
+
+# Local editor / tooling
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# Secrets
+.env
+.env.*
+!.env.example

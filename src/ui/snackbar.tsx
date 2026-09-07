@@ -1,0 +1,113 @@
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { T } from './components';
+import { color, radius, space, touch, type, weight } from './tokens';
+
+/**
+ * UNDO REPLACES CONFIRMATION.
+ *
+ * There are no confirmation dialogs on the dose path. A confirm dialog on the
+ * common path trains people to tap through confirms, which destroys its value
+ * on the rare path where it actually matters. So the write happens immediately
+ * and this snackbar is the confirmation.
+ *
+ * The 8 seconds are only the FAST path. Because undo is a reversing ledger
+ * entry rather than a delete, the same correction stays available forever from
+ * the Ledger screen.
+ */
+
+const UNDO_MS = 8000;
+
+interface Toast {
+  message: string;
+  onUndo?: () => void | Promise<void>;
+}
+
+interface UndoApi {
+  show: (message: string, onUndo?: () => void | Promise<void>) => void;
+}
+
+const UndoContext = createContext<UndoApi | null>(null);
+
+export function useToast(): UndoApi {
+  const ctx = useContext(UndoContext);
+  if (!ctx) throw new Error('useToast must be used inside <ToastProvider>');
+  return ctx;
+}
+
+export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [toast, setToast] = useState<Toast | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  const hide = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }).start(() =>
+      setToast(null),
+    );
+  }, [opacity]);
+
+  const show = useCallback(
+    (message: string, onUndo?: () => void | Promise<void>) => {
+      if (timer.current) clearTimeout(timer.current);
+      setToast({ message, onUndo });
+      // Haptic confirmation matters because she is often not looking at the
+      // screen when her thumb lands.
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+      timer.current = setTimeout(hide, UNDO_MS);
+    },
+    [hide, opacity],
+  );
+
+  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
+
+  return (
+    <UndoContext.Provider value={{ show }}>
+      {children}
+      {toast ? (
+        <Animated.View style={[st.wrap, { opacity }]} pointerEvents="box-none">
+          <View style={st.bar}>
+            <T style={st.text} numberOfLines={2}>
+              {toast.message}
+            </T>
+            {toast.onUndo ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Undo"
+                onPress={async () => {
+                  const fn = toast.onUndo;
+                  hide();
+                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+                  await fn?.();
+                }}
+                style={st.undo}
+              >
+                <T style={st.undoText}>UNDO</T>
+              </Pressable>
+            ) : null}
+          </View>
+        </Animated.View>
+      ) : null}
+    </UndoContext.Provider>
+  );
+}
+
+const st = StyleSheet.create({
+  wrap: { position: 'absolute', left: 0, right: 0, bottom: touch.tabBar + space.md, paddingHorizontal: space.md },
+  bar: {
+    minHeight: touch.cta,
+    backgroundColor: color.text,
+    borderRadius: radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: space.lg,
+    paddingRight: space.sm,
+    gap: space.sm,
+  },
+  text: { flex: 1, color: color.onDark, fontSize: type.label, fontWeight: weight.semibold },
+  // A large hit area: this is tapped in a hurry, one-handed.
+  undo: { minWidth: 88, minHeight: touch.min, alignItems: 'center', justifyContent: 'center' },
+  undoText: { color: '#93C5FD', fontSize: type.body, fontWeight: weight.bold, letterSpacing: 1 },
+});
