@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Badge, Input, Loading, T } from '../../ui/components';
+import { Badge, Input, Loading, T, useBottomInset } from '../../ui/components';
 import { color, elevation, radius, space, type, weight } from '../../ui/tokens';
 import { useQuery } from '../../db/provider';
 import { dosesGivenTotals, vaccinesByUsage } from '../../domain/reports';
@@ -19,6 +19,7 @@ import { BackupBanner } from '../../ui/backup-banner';
  */
 export default function GiveDoseScreen() {
   const router = useRouter();
+  const bottomInset = useBottomInset();
   const [q, setQ] = useState('');
   const today = todayLocal();
   const since = daysAgoLocal(30);
@@ -84,7 +85,7 @@ export default function GiveDoseScreen() {
         keyExtractor={(r) => r.vaccine_id}
         numColumns={2}
         columnWrapperStyle={{ gap: space.md }}
-        contentContainerStyle={st.grid}
+        contentContainerStyle={[st.grid, { paddingBottom: space.xxl + bottomInset }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -120,7 +121,6 @@ export default function GiveDoseScreen() {
               </T>
               <View style={{ flex: 1, minHeight: space.sm }} />
               <T style={[st.tileStock, { color: tone }]}>{d.primary}</T>
-              {d.secondary ? <T style={st.tileSecondary}>{d.secondary}</T> : null}
             </Pressable>
           );
         }}
@@ -149,7 +149,7 @@ const st = StyleSheet.create({
   pad: { paddingHorizontal: space.lg, paddingBottom: space.md, gap: space.md },
   emptyText: { fontSize: type.body, color: color.textMuted, textAlign: 'center', lineHeight: 26 },
 
-  grid: { paddingHorizontal: space.lg, paddingBottom: space.xxl, gap: space.md },
+  grid: { paddingHorizontal: space.lg, gap: space.md },
   tile: {
     flex: 1,
     minHeight: 138,
@@ -160,6 +160,5 @@ const st = StyleSheet.create({
   tilePressed: { backgroundColor: color.doseSoft, transform: [{ scale: 0.985 }] },
   tileName: { fontSize: type.title, fontWeight: weight.semibold, color: color.text, lineHeight: 27 },
   tileStock: { fontSize: type.body, fontWeight: weight.bold },
-  tileSecondary: { fontSize: type.min, color: color.textMuted, marginTop: 2 },
   tileBadge: { position: 'absolute', top: space.md, right: space.md, zIndex: 1 },
 });

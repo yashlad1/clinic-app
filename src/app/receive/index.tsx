@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Input, Loading, T } from '../../ui/components';
+import { Input, Loading, T, useBottomInset } from '../../ui/components';
 import { color, radius, space, touch, type, weight } from '../../ui/tokens';
 import { useQuery } from '../../db/provider';
 import { stockOnHand } from '../../domain/reports';
@@ -9,6 +9,7 @@ import { describeStockRow } from '../../domain/stock';
 
 /** Pick which vaccine arrived. Same grid idea as Give Dose, reused. */
 export default function ReceivePickScreen() {
+  const bottomInset = useBottomInset();
   const router = useRouter();
   const [q, setQ] = useState('');
   const { data: rows, loading } = useQuery((db) => stockOnHand(db, { activeOnly: true }), []);
@@ -31,7 +32,7 @@ export default function ReceivePickScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(r) => r.vaccine_id}
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl }}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl + bottomInset }}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
           const d = describeStockRow(item);
@@ -45,7 +46,6 @@ export default function ReceivePickScreen() {
                 <T style={st.name}>{item.name}</T>
                 <T style={st.sub}>
                   {d.primary}
-                  {d.secondary ? ` · ${d.secondary}` : ''}
                 </T>
               </View>
             </Pressable>

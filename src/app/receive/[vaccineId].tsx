@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BigButton, Chip, Field, Input, Loading, Stepper, T } from '../../ui/components';
+import { BigButton, Chip, Field, Footer, Input, Loading, Stepper, T } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
@@ -10,7 +10,8 @@ import { recordReceipt, reverseMovement } from '../../domain/ledger';
 import { findOrCreateLot } from '../../db/repo/lots';
 import { listStaff } from '../../db/repo/staff';
 import { describeStock, dosesFromVials } from '../../domain/stock';
-import { MONTHS, expiryFromMonth } from '../../domain/time';
+import { MonthYearWheel } from '../../ui/wheel';
+import { expiryFromMonth } from '../../domain/time';
 import type { FundingSource, StockRow } from '../../domain/types';
 
 /**
@@ -48,9 +49,6 @@ export default function ReceiveScreen() {
     vaccine.doses_per_vial,
     vaccine.min_balance_doses,
   );
-
-  const thisYear = new Date().getFullYear();
-  const years = [thisYear, thisYear + 1, thisYear + 2, thisYear + 3];
 
   const save = async () => {
     if (saving || !lotNumber.trim()) return;
@@ -104,16 +102,13 @@ export default function ReceiveScreen() {
         </Field>
 
         <Field label="Expiry" hint="Month and year, as printed on the vial.">
-          <View style={st.chipRow}>
-            {MONTHS.map((m, i) => (
-              <Chip accent="stock" key={m} label={m} selected={expMonth === i + 1} onPress={() => setExpMonth(i + 1)} />
-            ))}
-          </View>
-          <View style={st.chipRow}>
-            {years.map((y) => (
-              <Chip accent="stock" key={y} label={String(y)} selected={expYear === y} onPress={() => setExpYear(y)} />
-            ))}
-          </View>
+          <MonthYearWheel
+            accent="stock"
+            month={expMonth}
+            year={expYear}
+            onMonth={setExpMonth}
+            onYear={setExpYear}
+          />
         </Field>
 
         <Field label="Where it came from">
@@ -130,13 +125,12 @@ export default function ReceiveScreen() {
 
         <Field label={byVial ? 'How many vials?' : 'How many doses?'}>
           <Stepper accent="stock" value={qty} onChange={setQty} min={1} max={500} quickValues={[1, 5, 10, 20, 50]} />
-          {byVial ? <T style={st.calc}>= {doses} doses</T> : null}
         </Field>
 
-        <T style={st.after}>After adding: {after.primary}{after.secondary ? ` (${after.secondary})` : ''}</T>
+        <T style={st.after}>After adding: {after.primary}</T>
       </ScrollView>
 
-      <View style={st.footer}>
+      <Footer>
         <BigButton
           accent="stock"
           label="ADD TO STOCK"
@@ -144,7 +138,7 @@ export default function ReceiveScreen() {
           onPress={save}
           disabled={saving || !lotNumber.trim()}
         />
-      </View>
+      </Footer>
     </View>
   );
 }
@@ -155,7 +149,5 @@ const st = StyleSheet.create({
   name: { fontSize: type.big, fontWeight: weight.bold, color: color.text },
   sub: { fontSize: type.label, color: color.textMuted, marginTop: space.xs, marginBottom: space.xl },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
-  calc: { fontSize: type.body, fontWeight: weight.semibold, color: color.textMuted, marginTop: space.sm },
   after: { fontSize: type.body, fontWeight: weight.semibold, color: color.stock },
-  footer: { padding: space.lg, borderTopWidth: 1, borderTopColor: color.border },
 });

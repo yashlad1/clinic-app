@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Badge, BigButton, Empty, Input, Loading, Row, SecondaryButton, T } from '../../ui/components';
+import { Badge, BigButton, Empty, Input, Loading, Row, SecondaryButton, T, useBottomInset } from '../../ui/components';
 import { color, radius, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { asOfLabel, dosesGiven, dosesGivenTotals, movementStrip } from '../../domain/reports';
@@ -9,6 +9,7 @@ import { formatDayLabel, formatTime12h, todayLocal } from '../../domain/time';
 
 /** "Vaccines given today, time, count" - the notebook page, arithmetic included. */
 export default function TodayScreen() {
+  const bottomInset = useBottomInset();
   const { db, bump } = useDb();
   const today = todayLocal();
   const [editing, setEditing] = useState<string | null>(null);
@@ -23,7 +24,7 @@ export default function TodayScreen() {
   const total = (totals ?? []).reduce((n, t) => n + t.doses, 0);
 
   return (
-    <ScrollView style={st.screen} contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl }}>
+    <ScrollView style={st.screen} contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl + bottomInset }}>
       <T style={st.day}>{formatDayLabel()}</T>
       <T style={st.total}>
         {total} {total === 1 ? 'dose' : 'doses'} given

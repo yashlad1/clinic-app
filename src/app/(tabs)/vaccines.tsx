@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Badge, BigButton, Card, Chip, Input, Loading, T } from '../../ui/components';
-import { color, elevation, radius, space, type, weight } from '../../ui/tokens';
+import { Badge, BigButton, Card, Chip, Footer, Input, Loading, T, useBottomInset } from '../../ui/components';
+import { color, radius, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import {
@@ -25,6 +25,7 @@ import {
  */
 export default function VaccinesScreen() {
   const router = useRouter();
+  const bottomInset = useBottomInset();
   const { db, bump } = useDb();
   const toast = useToast();
   const [q, setQ] = useState('');
@@ -83,7 +84,7 @@ export default function VaccinesScreen() {
       <FlatList
         data={rows}
         keyExtractor={(v) => v.id}
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 140 + bottomInset }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
@@ -196,14 +197,14 @@ export default function VaccinesScreen() {
         )}
       />
 
-      <View style={[st.footer, elevation(3)]}>
+      <Footer floating>
         <BigButton
           accent="catalog"
           label="ADD A NEW VACCINE"
           sublabel="Trade name, how it is counted, safety limit"
           onPress={() => router.push('/catalog/new')}
         />
-      </View>
+      </Footer>
     </View>
   );
 }
@@ -239,16 +240,4 @@ const st = StyleSheet.create({
   },
   actionText: { fontSize: type.label, fontWeight: weight.semibold },
 
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: space.lg,
-    backgroundColor: color.bg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.border,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-  },
 });

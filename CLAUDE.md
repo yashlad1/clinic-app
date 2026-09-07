@@ -297,9 +297,16 @@ Nothing nested deeper than two levels.
 
 **Give Dose:** status strip (`Sun 6 Sep · 12 doses today · 3 LOW`) → sticky search field (**not**
 autofocused; the keyboard must not cover the grid on arrival) → 2-column grid of large vaccine tiles
-filling ~85% of the screen. Each tile: trade name 22pt semibold, stock beneath it (`18 doses` or
-`2 vials (20 doses)`), amber `LOW` pill at or below `min_balance_doses`. Ordered by 30-day usage,
-then alphabetical.
+filling ~85% of the screen. Each tile: trade name 22pt semibold, stock beneath it **in doses only**
+(`18 doses`), amber `LOW` pill at or below `min_balance_doses`. Ordered by 30-day usage, then
+alphabetical.
+
+**Doses are the only unit shown anywhere.** `describeStock` still returns a `secondary` vial
+breakdown (`2 vials + 7 doses`), but no screen renders it — the user asked for it removed, on the
+grounds that it reads like the app is thinking out loud. Invariant 4 is unaffected: the app still does
+every vial→dose conversion internally and still reports the *result* in doses, which is what "the
+clinician never does arithmetic" actually requires. The intermediate `= 30 doses` line under the
+receive stepper is gone for the same reason. Do not reintroduce either without asking.
 
 That grid is the design's best trick: **two of the three requested reports are ambient on the home
 screen.** The doctor never navigates to read remaining stock.
@@ -320,6 +327,12 @@ These are requirements, not preferences.
 
 - **56×56dp minimum** touch targets (Android's guideline is 48 — go bigger). Primary CTAs 64dp tall,
   full width, in the bottom third. Portrait locked.
+- **Never position anything at `bottom: 0` directly.** Android's three-button navigation bar overlays
+  it, and because every primary CTA lives in the bottom third by the rule above, the button is not
+  merely clipped — it is *untappable*. Use `Footer` from `src/ui/components.tsx`, which adds
+  `useSafeAreaInsets().bottom`; scrolling screens add `useBottomInset()` to their `paddingBottom`.
+  This is not cosmetic: it is how "ADD A NEW VACCINE" spent a release looking like a feature that had
+  never been built.
 - **No icon-only controls** outside the tab bar. Every button gets a word — icons are ambiguous to
   someone coming from paper.
 - Type scale: numbers that matter **28–34pt bold**, tile titles **22pt semibold**, body **18pt**,
@@ -335,6 +348,14 @@ These are requirements, not preferences.
   small or low-contrast.
 - **Must be tested at Android font scale 1.3× and 1.6×** plus display size Large. This cohort very
   likely has both turned up; it is the most-skipped check and the most likely to bite here.
+- **Expiry is a month/year wheel** (`src/ui/wheel.tsx`), not chips and not a text field — twelve
+  month chips plus four year chips wrapped into an unreadable block. The first row of each wheel is
+  `—`, meaning *not set*: a wheel always shows something under the selection band, so one that
+  started on a real month would silently claim an expiry nobody entered, and expiry is optional.
+  Hand-written for the same reason as the top tabs: `@react-native-picker/picker` is a native
+  dependency, so it breaks Expo Go and rotates the OTA fingerprint. The resolved last usable day is
+  spelled out beneath it (`Usable through 31 Mar 2028`), which is the visible half of the
+  last-day-of-month rule in `domain/time.ts`.
 - **Steppers, not keyboards**, for any value ≤20 (long-press to repeat; `10/20/50` quick chips when
   receiving). The reason is correctness, not comfort: *a stepper cannot produce 100 when you meant
   10*, and in a derived-stock ledger that typo is silent corruption surfacing weeks later.

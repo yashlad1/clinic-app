@@ -1,9 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  BigButton, Chip, Empty, Field, Input, Loading, SecondaryButton, Stepper, T,
-} from '../../ui/components';
+import { BigButton, Chip, Empty, Field, Footer, Input, Loading, SecondaryButton, Stepper, T } from '../../ui/components';
 import { color, radius, space, touch, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
@@ -110,8 +108,7 @@ export default function DoseScreen() {
         {/* The vaccine name IS the confirmation, and it costs no tap. */}
         <T style={st.name}>{vaccine.name}</T>
         <T style={st.stock}>
-          {stock.primary}
-          {stock.secondary ? ` · ${stock.secondary}` : ''} in stock
+          {stock.primary} in stock
         </T>
 
         <Field
@@ -221,7 +218,7 @@ export default function DoseScreen() {
         ) : null}
       </ScrollView>
 
-      <View style={st.footer}>
+      <Footer gap={space.md}>
         {!childLabel ? (
           <Pressable
             accessibilityRole="button"
@@ -237,7 +234,7 @@ export default function DoseScreen() {
           onPress={give}
           disabled={saving || expired}
         />
-      </View>
+      </Footer>
     </View>
   );
 }
@@ -251,13 +248,6 @@ const st = StyleSheet.create({
   warn: { fontSize: type.label, fontWeight: weight.semibold, color: color.low, marginTop: space.sm },
   addRow: { minHeight: touch.min, justifyContent: 'center', marginTop: space.sm },
   addText: { fontSize: type.body, fontWeight: weight.semibold, color: color.dose },
-  footer: {
-    padding: space.lg,
-    gap: space.md,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-    backgroundColor: color.bg,
-  },
   skip: { minHeight: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   skipText: { fontSize: type.body, fontWeight: weight.semibold, color: color.dose },
 });

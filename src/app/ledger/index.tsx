@@ -1,6 +1,6 @@
 import React from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { Badge, Empty, Loading, SecondaryButton, T } from '../../ui/components';
+import { Badge, Empty, Loading, SecondaryButton, T, useBottomInset } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { newId } from '../../domain/ids';
@@ -29,6 +29,7 @@ interface LedgerLine {
  * remains possible here forever - the 8-second snackbar is only the fast path.
  */
 export default function LedgerScreen() {
+  const bottomInset = useBottomInset();
   const { db, deviceId, bump } = useDb();
 
   const { data, loading } = useQuery((d) =>
@@ -63,7 +64,7 @@ export default function LedgerScreen() {
       style={st.screen}
       data={data}
       keyExtractor={(m) => m.id}
-      contentContainerStyle={{ padding: space.lg }}
+      contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl + bottomInset }}
       renderItem={({ item }) => {
         const undone = item.is_reversed === 1;
         return (

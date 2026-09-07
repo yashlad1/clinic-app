@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { BigButton, Field, Input, Loading, Row, T } from '../../ui/components';
+import { BigButton, Field, Input, Loading, Row, T, useBottomInset } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
@@ -9,6 +9,7 @@ import { createStaff, listStaff } from '../../db/repo/staff';
 import { LATEST_VERSION } from '../../db/migrate';
 
 export default function SettingsScreen() {
+  const bottomInset = useBottomInset();
   const { db, deviceId, appVersion, bump } = useDb();
   const toast = useToast();
   const [clinic, setClinic] = useState('');
@@ -24,7 +25,7 @@ export default function SettingsScreen() {
   if (!staff) return <Loading />;
 
   return (
-    <ScrollView style={st.screen} contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl }}>
+    <ScrollView style={st.screen} contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl + bottomInset }}>
       <Field label="Clinic name" hint="Shown on exported reports.">
         <Input value={clinic} onChangeText={setClinic} autoCapitalize="words" />
       </Field>

@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Badge, BigButton, Card, Chip, Input, Loading, T } from '../../ui/components';
-import { color, elevation, radius, space, type, weight } from '../../ui/tokens';
+import { Badge, BigButton, Card, Chip, Footer, Input, Loading, T, useBottomInset } from '../../ui/components';
+import { color, space, type, weight } from '../../ui/tokens';
 import { useQuery } from '../../db/provider';
 import { asOfLabel, movementStrip, stockOnHand } from '../../domain/reports';
 import { describeStockRow } from '../../domain/stock';
@@ -17,6 +17,7 @@ import { todayLocal } from '../../domain/time';
  */
 export default function AddStockScreen() {
   const router = useRouter();
+  const bottomInset = useBottomInset();
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<'all' | 'low'>('all');
   const today = todayLocal();
@@ -48,7 +49,7 @@ export default function AddStockScreen() {
       <FlatList
         data={shown}
         keyExtractor={(x) => x.row.vaccine_id}
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 140 + bottomInset }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
@@ -111,7 +112,6 @@ export default function AddStockScreen() {
               <T style={st.rowName}>{item.row.name}</T>
               <T style={st.rowSub}>
                 {item.d.primary}
-                {item.d.secondary ? ` · ${item.d.secondary}` : ''}
                 {item.row.min_balance_doses > 0 ? ` · keep ${item.row.min_balance_doses}` : ''}
               </T>
             </View>
@@ -123,14 +123,14 @@ export default function AddStockScreen() {
         )}
       />
 
-      <View style={[st.footer, elevation(3)]}>
+      <Footer floating>
         <BigButton
           accent="stock"
           label="ADD STOCK"
           sublabel="Log a delivery that has arrived"
           onPress={() => router.push('/receive')}
         />
-      </View>
+      </Footer>
     </View>
   );
 }
@@ -166,16 +166,4 @@ const st = StyleSheet.create({
   rowSub: { fontSize: type.label, color: color.textMuted, marginTop: 2 },
   plus: { fontSize: type.big, fontWeight: weight.bold, color: color.stock, marginTop: -3 },
 
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: space.lg,
-    backgroundColor: color.bg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.border,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-  },
 });

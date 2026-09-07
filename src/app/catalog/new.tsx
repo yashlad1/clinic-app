@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { BigButton, Chip, Field, Input, Stepper, T } from '../../ui/components';
+import { BigButton, Chip, Field, Footer, Input, Stepper, T } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useDb } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
@@ -127,7 +127,7 @@ export default function NewVaccineScreen() {
         {error ? <T style={st.error}>{error}</T> : null}
       </ScrollView>
 
-      <View style={st.footer}>
+      <Footer>
         <BigButton
           accent="catalog"
           label="ADD VACCINE"
@@ -135,7 +135,7 @@ export default function NewVaccineScreen() {
           disabled={!name.trim()}
           sublabel={name.trim() ? undefined : 'Enter the trade name first'}
         />
-      </View>
+      </Footer>
     </View>
   );
 }
@@ -144,10 +144,4 @@ const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
   chipRow: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
   error: { fontSize: type.label, color: color.danger, fontWeight: weight.semibold, lineHeight: 22 },
-  footer: {
-    padding: space.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.border,
-    backgroundColor: color.bg,
-  },
 });

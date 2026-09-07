@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BigButton, Chip, Field, Input, Loading, SecondaryButton, Stepper, T } from '../../ui/components';
+import { BigButton, Chip, Field, Footer, Input, Loading, SecondaryButton, Stepper, T } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
@@ -87,9 +87,9 @@ export default function EditVaccineScreen() {
           </View>
         </Field>
       </ScrollView>
-      <View style={st.footer}>
+      <Footer>
         <BigButton accent="catalog" label="SAVE" onPress={save} disabled={!name.trim()} />
-      </View>
+      </Footer>
     </View>
   );
 }
@@ -97,5 +97,4 @@ export default function EditVaccineScreen() {
 const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  footer: { padding: space.lg, borderTopWidth: 1, borderTopColor: color.border },
 });

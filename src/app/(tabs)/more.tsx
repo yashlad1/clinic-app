@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Badge, Card, Row, SectionTitle, T } from '../../ui/components';
+import { Badge, Card, Row, SectionTitle, T, useBottomInset } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { useQuery } from '../../db/provider';
 import { SETTING, getSetting } from '../../db/repo/settings';
@@ -10,6 +10,7 @@ import { missingChildEntries } from '../../domain/reports';
 
 /** Everything infrequent, as a flat list of large labelled rows. */
 export default function MoreScreen() {
+  const bottomInset = useBottomInset();
   const router = useRouter();
 
   const { data: lastBackupAt } = useQuery(
@@ -20,7 +21,7 @@ export default function MoreScreen() {
   return (
     <ScrollView
       style={st.screen}
-      contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl }}
+      contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl + bottomInset }}
       showsVerticalScrollIndicator={false}
     >
       <Card tone="soft">

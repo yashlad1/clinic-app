@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { T } from './components';
 import { color, radius, space, touch, type, weight } from './tokens';
@@ -12,7 +13,7 @@ import { color, radius, space, touch, type, weight } from './tokens';
  * on the rare path where it actually matters. So the write happens immediately
  * and this snackbar is the confirmation.
  *
- * The 8 seconds are only the FAST path. Because undo is a reversing ledger
+ * The 3.5 seconds are only the FAST path. Because undo is a reversing ledger
  * entry rather than a delete, the same correction stays available forever from
  * the Ledger screen.
  */
@@ -72,11 +73,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
 
+  const insets = useSafeAreaInsets();
+
   return (
     <UndoContext.Provider value={{ show }}>
       {children}
       {toast ? (
-        <Animated.View style={[st.wrap, { opacity }]} pointerEvents="box-none">
+        <Animated.View
+          style={[st.wrap, { opacity, bottom: space.xl + insets.bottom }]}
+          pointerEvents="box-none"
+        >
           <View style={st.bar}>
             <T style={st.text} numberOfLines={2}>
               {toast.message}
@@ -106,7 +112,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 const st = StyleSheet.create({
   // The tab bar is at the TOP now, so the toast sits at the bottom of the
   // screen where the thumb already is.
-  wrap: { position: 'absolute', left: 0, right: 0, bottom: space.xl, paddingHorizontal: space.md },
+  // `bottom` is set inline so it can add the navigation-bar inset.
+  wrap: { position: 'absolute', left: 0, right: 0, paddingHorizontal: space.md },
   bar: {
     minHeight: touch.cta,
     backgroundColor: color.text,

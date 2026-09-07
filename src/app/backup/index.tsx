@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { BigButton, Loading, Row, T } from '../../ui/components';
+import { BigButton, Loading, Row, T, useBottomInset } from '../../ui/components';
 import { color, radius, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
@@ -16,6 +16,7 @@ import { formatDate } from '../../domain/time';
  * ledger unless a backup left the device.
  */
 export default function BackupScreen() {
+  const bottomInset = useBottomInset();
   const { db, raw, deviceId, appVersion, bump } = useDb();
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
@@ -97,7 +98,7 @@ export default function BackupScreen() {
   };
 
   return (
-    <ScrollView style={st.screen} contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl }}>
+    <ScrollView style={st.screen} contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl + bottomInset }}>
       <View style={st.card}>
         <T style={st.status}>{lastBackupLabel(meta.lastBackupAt)}</T>
         <T style={st.sub}>

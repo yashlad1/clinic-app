@@ -3,6 +3,7 @@ import {
   ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput,
   type TextInputProps, View, type ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   MAX_FONT_SCALE, type Accent, accentColor, accentSoft, color, elevation, radius, space, touch,
   type, weight,
@@ -26,15 +27,69 @@ export function Screen({ children, style }: { children: React.ReactNode; style?:
 }
 
 export function Scroll({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+  const insets = useSafeAreaInsets();
   return (
     <ScrollView
       style={[s.screen, style]}
-      contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl * 2 }}
+      contentContainerStyle={{
+        padding: space.lg,
+        // Clears Android's navigation bar; see Footer.
+        paddingBottom: space.xxl * 2 + insets.bottom,
+      }}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
+  );
+}
+
+/**
+ * How much room the system takes at the bottom of the screen. Add this to the
+ * `paddingBottom` of any list that sits under a `floating` Footer, or the last
+ * row hides behind it.
+ */
+export function useBottomInset() {
+  return useSafeAreaInsets().bottom;
+}
+
+/**
+ * Bottom-anchored action bar. Use this instead of a hand-rolled `footer` style.
+ *
+ * Android's three-button navigation bar overlaps anything positioned at
+ * `bottom: 0`, and by design (CLAUDE.md section 8) every primary CTA in this
+ * app lives in the bottom third. Without the inset the button is not merely
+ * clipped, it is *untappable* - which is how "ADD A NEW VACCINE" came to look
+ * like a feature that had never been built.
+ *
+ * `floating` overlays a scrolling list (Stock, Vaccines); the default sits in
+ * normal flow beneath one (the modals).
+ */
+export function Footer({
+  children,
+  floating,
+  gap,
+  style,
+}: {
+  children: React.ReactNode;
+  floating?: boolean;
+  gap?: number;
+  style?: ViewStyle;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      style={[
+        s.footer,
+        floating ? s.footerFloating : null,
+        floating ? elevation(3) : null,
+        { paddingBottom: space.lg + insets.bottom },
+        gap ? { gap } : null,
+        style,
+      ]}
+    >
+      {children}
+    </View>
   );
 }
 
@@ -400,6 +455,21 @@ export function Empty({ title, hint }: { title: string; hint?: string }) {
 
 export const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
+  footer: {
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg,
+    backgroundColor: color.bg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: color.border,
+  },
+  footerFloating: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+  },
   center: {
     flex: 1,
     alignItems: 'center',
