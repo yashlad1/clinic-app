@@ -201,42 +201,42 @@ export const STORIES: Story[] = [
     epic: 'backup', summary: 'Build restore with validate-before-commit',
     description:
       'Open the candidate IN MEMORY via deserializeDatabaseAsync, inspect it fully, show a confirmation with real counts from both the backup and the phone, snapshot the live database, then commit. Migrate forward afterwards in case the backup predates the current schema.',
-    sprint: 'Sprint 2', points: 8, priority: 'Highest', reqs: ['FR-74', 'FR-76', 'FR-77', 'NFR-24'],
+    sprint: 'Sprint 2', points: 8, priority: 'Highest', reqs: ['FR-74', 'FR-76', 'FR-77', 'NFR-24'], done: true,
   },
   {
     epic: 'backup', summary: 'Give every restore rejection a specific message',
     description:
       'Not a zip / no database inside / newer schema version / missing tables / row counts contradicting the manifest. "Restore failed" teaches nothing and leaves the clinician unsure whether her data is safe.',
-    sprint: 'Sprint 2', points: 3, priority: 'High', reqs: ['FR-75'],
+    sprint: 'Sprint 2', points: 3, priority: 'High', reqs: ['FR-75'], done: true,
   },
   {
     epic: 'backup', summary: 'Add backup prompts and daily on-device snapshots',
     description:
       'Amber at 3 days OR 25 unbacked entries; red at 14 days. Never modal, never blocking. A snooze must not silence the red state. Plus one silent .db snapshot per day, retaining seven.',
-    sprint: 'Sprint 2', points: 5, priority: 'High', reqs: ['FR-78', 'FR-79', 'FR-80', 'FR-81'],
+    sprint: 'Sprint 2', points: 5, priority: 'High', reqs: ['FR-78', 'FR-79', 'FR-80', 'FR-81'], done: true,
   },
   {
     epic: 'dose', summary: 'Add the patient register with type-ahead and quick-add',
     description:
       'Recent-children chips for the one-tap case, search by name prefix OR last four digits of the guardian phone, and inline creation from the dose screen. Never a separate form in the dose flow.',
-    sprint: 'Sprint 2', points: 5, priority: 'High', reqs: ['FR-30'],
+    sprint: 'Sprint 2', points: 5, priority: 'High', reqs: ['FR-30'], done: true,
   },
   {
     epic: 'stock', summary: 'Add the staff list and per-entry attribution',
     description: 'More than one person enters data. Accountability by visibility — no login, no countersigning.',
-    sprint: 'Sprint 2', points: 3, priority: 'Medium', reqs: ['FR-21'],
+    sprint: 'Sprint 2', points: 3, priority: 'Medium', reqs: ['FR-21'], done: true,
   },
   {
     epic: 'stock', summary: 'Separate government (UIP) from privately purchased balances',
     description:
       'funding_source is part of lot identity so the two never commingle. Counting only — no costing or accounting, which the clinician excluded.',
-    sprint: 'Sprint 2', points: 3, priority: 'Medium', reqs: ['FR-13'],
+    sprint: 'Sprint 2', points: 3, priority: 'Medium', reqs: ['FR-13'], done: true,
   },
   {
     epic: 'stock', summary: 'Build the catalog editing screens',
     description:
       'Trade name, unit mode, doses-per-vial, safety limit, and hide-without-deleting. Carries the warning that doses-per-vial multiplies every count for that vaccine.',
-    sprint: 'Sprint 2', points: 5, priority: 'High', reqs: ['FR-5', 'FR-6', 'FR-8'],
+    sprint: 'Sprint 2', points: 5, priority: 'High', reqs: ['FR-5', 'FR-6', 'FR-8'], done: true,
   },
   {
     epic: 'delivery', summary: 'Wire up expo-updates for over-the-air releases',
@@ -268,7 +268,7 @@ export const STORIES: Story[] = [
     epic: 'corrections', summary: 'Build the ledger / audit screen with corrections',
     description:
       'The full history with corrections visible as corrections, and "Correct this entry" available indefinitely — the snackbar is only the fast path.',
-    sprint: 'Sprint 3', points: 5, priority: 'High', reqs: ['FR-42'],
+    sprint: 'Sprint 3', points: 5, priority: 'High', reqs: ['FR-42'], done: true,
   },
   {
     epic: 'corrections', summary: 'Build blind physical-count reconciliation',
@@ -284,7 +284,7 @@ export const STORIES: Story[] = [
   {
     epic: 'reports', summary: 'Build the missing-child-name completion queue',
     description: 'A day-end list of doses logged without a name, completable without touching the arithmetic.',
-    sprint: 'Sprint 3', points: 3, priority: 'Medium', reqs: ['FR-23', 'FR-60'],
+    sprint: 'Sprint 3', points: 3, priority: 'Medium', reqs: ['FR-23', 'FR-60'], done: true,
   },
 
   // ---------------------------------------------------------------- Backlog
