@@ -52,11 +52,57 @@ npm run keystore       # eas credentials  →  Android → download the keystore
 **Do this on day one and store the keystore file and its password somewhere you will still have in
 three years** (password manager, not just a laptop folder).
 
+**Done — 7 Sep 2026.** Archived to `~/clinic-stock-keystore/` (`keystore.jks` +
+`credentials.txt`, both `chmod 600`, outside the repo). `*.jks` / `*.keystore` are in
+`.gitignore`. **Still move it into a password manager or encrypted drive — a laptop folder is
+one spilled coffee from being the failure this section exists to prevent.**
+
+The one fact to keep even if the file is lost — the fingerprint every future build must match:
+
+```
+in.clinicstock.app
+SHA-256  f83efd0e7e1f2a626abfa91b25e88c84e8c29c7eb7a3c487d2dbf9fb571d09e7
+```
+
+Check any future APK against it before sending it to the clinic:
+
+```sh
+$ANDROID_HOME/build-tools/36.0.0/apksigner verify --print-certs app.apk | grep 'SHA-256'
+```
+
+A different value means that APK **cannot** upgrade her installed app in place.
+
 Why this matters more than anything else here: **an APK can only be upgraded in place if the new one
 is signed with the same key.** If that keystore is lost or rotated, the only way to install a new
 version is to uninstall the old one first — **and uninstalling deletes the clinic's entire database.**
 
 Related, same reason: **never change `android.package`** (`in.clinicstock.app`).
+
+---
+
+## Builds shipped
+
+| Date | versionCode | Version | Size | Notes |
+| --- | --- | --- | --- | --- |
+| 7 Sep 2026 | 3 | 0.1.0 | 109 MB | First successful build. Universal APK — all four ABIs |
+
+### Why later builds are ~half the size
+
+Build 3 shipped `arm64-v8a`, `armeabi-v7a`, **`x86` and `x86_64`**. The last two are emulator
+architectures; no phone will ever load them, and they were ~55% of the download. Since the delivery
+channel is WhatsApp or Drive to a phone on Indian mobile data, that is a real cost paid by the person
+we are trying to help.
+
+`eas.json` now pins release builds to the two ARM ABIs:
+
+```json
+"env": { "ORG_GRADLE_PROJECT_reactNativeArchitectures": "arm64-v8a,armeabi-v7a" }
+```
+
+Gradle maps `ORG_GRADLE_PROJECT_<name>` onto the project property React Native's `build.gradle`
+already reads, so this needs no `expo-build-properties` and no `android/` directory. `armeabi-v7a`
+stays in — dropping it would exclude older 32-bit phones for ~9 MB, which is the wrong trade for a
+clinic that may hand this to a spare handset.
 
 ## Send it to her
 
