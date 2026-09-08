@@ -1,142 +1,176 @@
 # Clinic Stock — how to use it
 
-A replacement for the vaccine stock notebook. Everything stays on the phone; no internet is needed
-to use it.
+This app replaces the vaccine stock notebook.
 
-Two things happen all day, and both are on the first two tabs.
+Everything stays on the phone. No internet is needed.
+
+There are 4 tabs at the top. You will use the first two every day.
 
 ---
 
-## The whole app in one picture
+## The app in one picture
 
 ```mermaid
 flowchart TD
     OPEN([Open the app]) --> HOME
 
-    HOME["<b>GIVE DOSE</b> — opens here<br/>Every vaccine as a big tile,<br/>with how many doses are left"]
+    HOME["<b>GIVE DOSE</b><br/>The app opens here.<br/>Every vaccine is a big box.<br/>Under each name is how many doses are left."]
 
-    HOME -->|"A child is being vaccinated"| D1
-    HOME -->|"A delivery has arrived"| S1
-    HOME -->|"A new vaccine, or remove one"| V1
+    HOME -->|"Giving a vaccine to a child"| D1
+    HOME -->|"New stock has come"| S1
+    HOME -->|"Add or remove a vaccine"| V1
     HOME -->|"Reports and backup"| M1
 
-    subgraph GIVE ["Give a dose — 2 or 3 taps"]
+    subgraph GIVE ["Give a vaccine — 3 taps"]
         direction TB
-        D1["Tap the vaccine's tile"] --> D2["Batch is already chosen<br/>(change it only if wrong)"]
-        D2 --> D3{"Do you have<br/>the child's name?"}
-        D3 -->|Yes| D4["Tap the name,<br/>or type 2 letters to find it"]
-        D3 -->|No| D5["Tap <b>Skip — no name</b>"]
-        D4 --> D6(["Tap <b>GIVE 1 DOSE</b>"])
-        D5 --> D6
-        D6 --> D7["Stock drops straight away.<br/>Wrong tap? Tap <b>UNDO</b><br/>on the black bar."]
+        D1["1. Tap the vaccine box"] --> D2["2. Tap the child's name<br/>or tap <b>Skip — no name</b>"]
+        D2 --> D3(["3. Tap <b>GIVE 1 DOSE</b>"])
+        D3 --> D4["The count goes down at once.<br/>Wrong tap? Tap <b>UNDO</b>."]
     end
 
-    subgraph ADD ["Log a delivery"]
+    subgraph ADD ["New stock has come"]
         direction TB
-        S1["Open <b>ADD STOCK</b> tab"] --> S2["Tap the vaccine"]
-        S2 --> S3["Type the batch number<br/>from the box"]
-        S3 --> S4["Roll the wheels to the<br/>expiry month and year"]
-        S4 --> S5["Bought, or Government free?"]
-        S5 --> S6["Use − and + for how many<br/>vials arrived"]
-        S6 --> S7(["Tap <b>ADD TO STOCK</b>"])
+        S1["1. Tap <b>ADD STOCK</b> at the top"] --> S2["2. Tap the vaccine"]
+        S2 --> S3["3. Type the batch number<br/>written on the box"]
+        S3 --> S4["4. Roll the wheels to the<br/>expiry month and year"]
+        S4 --> S5["5. Tap − or + for how many<br/>vials have come"]
+        S5 --> S6(["6. Tap <b>ADD TO STOCK</b>"])
     end
 
     subgraph CAT ["Vaccines"]
         direction TB
-        V1["Open <b>VACCINES</b> tab"] --> V2["<b>ADD A NEW VACCINE</b> at the bottom"]
-        V1 --> V3["<b>Hide</b> — stops it showing,<br/>keeps all history"]
-        V1 --> V4["<b>Remove</b> — takes it off every list.<br/>Nothing is ever erased."]
+        V1["Tap <b>VACCINES</b> at the top"] --> V2["To add one:<br/><b>ADD A NEW VACCINE</b> at the bottom"]
+        V1 --> V3["To stop using one:<br/>tap <b>Hide</b> or <b>Remove</b>"]
     end
 
     subgraph MORE ["More"]
         direction TB
-        M1["Open <b>MORE</b> tab"] --> M2["<b>Given today</b> — every dose,<br/>with times and totals"]
-        M1 --> M3["<b>Back up / restore</b>"]
-        M1 --> M4["<b>Missing child names</b> — fill in<br/>the ones you skipped"]
-        M1 --> M5["<b>All entries</b> — full history,<br/>and correct any entry"]
+        M1["Tap <b>MORE</b> at the top"] --> M2["<b>Given today</b><br/>every dose, with time"]
+        M1 --> M3["<b>Back up / restore</b><br/>save a copy"]
+        M1 --> M4["<b>Missing child names</b><br/>add names you skipped"]
+        M1 --> M5["<b>All entries</b><br/>full history, and fix mistakes"]
     end
 
     style HOME fill:#DBEAFE,stroke:#1D4ED8,stroke-width:2px
-    style D6 fill:#DBEAFE,stroke:#1D4ED8,stroke-width:2px
-    style S7 fill:#CCFBF1,stroke:#0F766E,stroke-width:2px
+    style D3 fill:#DBEAFE,stroke:#1D4ED8,stroke-width:2px
+    style S6 fill:#CCFBF1,stroke:#0F766E,stroke-width:2px
     style OPEN fill:#F1F5F9,stroke:#475569
 ```
 
 ---
 
-## Installing it
+## How to install it
 
-1. Tap the link sent on WhatsApp. Let it download.
-2. Android will warn that it is not from the Play Store. Choose **More details → Install anyway**.
-   It asks once.
-3. Open **Clinic Stock**.
+1. Tap the link.
+2. Let it download.
+3. The phone will say it is not from the Play Store. Tap **More details**, then **Install anyway**.
+4. Open **Clinic Stock**.
 
-## Before you rely on it — five minutes, once
-
-1. Open the **VACCINES** tab and check **doses per vial** for every vial you actually use.
-   These are only suggestions and pack sizes vary by manufacturer. **This number multiplies every
-   count**, so a wrong one there makes every total wrong for that vaccine.
-2. Open **ADD STOCK** and enter what is in the fridge right now, vaccine by vaccine.
-3. Open **MORE → Back up / restore**, take one backup, and send it to yourself on WhatsApp — so you
-   have seen it work once before you need it.
+It asks only the first time.
 
 ---
 
-## The colours mean something
+## Do this once, before you start
 
-The tab you are on tells you which way stock is moving. **Give dose is blue and takes stock out.
-Add stock is green-blue and puts stock in.** If the screen is the wrong colour, you are on the wrong
-tab.
+**1. Check the doses per vial.**
 
-On the tiles:
+Tap **VACCINES**. Look at each vial you use. Check that the doses per vial matches the real vial in
+your fridge.
 
-| What you see | What it means |
+This number is used for every count. If it is wrong, every total for that vaccine will be wrong.
+
+**2. Put in what you have now.**
+
+Tap **ADD STOCK**. Add what is in the fridge today, one vaccine at a time.
+
+**3. Take one backup.**
+
+Tap **MORE**, then **Back up / restore**, then **Back up now**. Send the file to yourself on
+WhatsApp. Now you have seen it work once.
+
+---
+
+## Giving a vaccine
+
+1. Tap the vaccine box.
+2. Tap the child's name. Or type 2 letters to find it. Or tap **Skip — no name**.
+3. Tap **GIVE 1 DOSE**.
+
+The count goes down at once.
+
+If you tapped wrong, a black bar comes up at the bottom. Tap **UNDO** on it.
+
+You do not have to type the batch. It is already filled in.
+
+---
+
+## When new stock comes
+
+1. Tap **ADD STOCK** at the top.
+2. Tap the vaccine.
+3. Type the batch number from the box.
+4. Roll the wheels to the expiry month and year.
+5. Tap **Bought** or **Government (free)**.
+6. Tap **−** or **+** for how many vials have come.
+7. Tap **ADD TO STOCK**.
+
+You do not have to multiply. The app does it.
+
+---
+
+## The colours
+
+**Blue** takes stock out. **Green** puts stock in.
+
+If the screen is the wrong colour, you are on the wrong tab.
+
+| On the box | Meaning |
 | --- | --- |
 | **18 doses** in black | Fine |
-| **LOW** in amber | At or below the safety limit you set |
+| **LOW** in yellow | Very few left |
 | **OUT** in red | None left |
-| **CHECK** in red | The count went below zero — a delivery was probably not logged |
+| **CHECK** in red | The count went below zero. Some stock was not put in. |
 
-Every warning has a **word**, not only a colour.
+Every warning has a word, not just a colour.
 
 ---
 
-## Things worth knowing
+## Good to know
 
-**The child's name is always optional.** Never let a missing name stop you recording a dose. Tap
-**Skip — no name** and finish it later from **MORE → Missing child names**.
+**The child's name is not needed.** Never stop because you do not have it. Tap **Skip — no name**.
+Add it later from **MORE → Missing child names**.
 
-**Nothing is ever deleted.** Correcting an entry adds a correction next to it, so the history stays
-complete. That is why **UNDO** stays available from **MORE → All entries** weeks later, not just for
-the few seconds the black bar is on screen.
+**Nothing is ever deleted.** If you fix a mistake, the app adds a correction next to it. The old
+entry stays. So you can fix a mistake weeks later.
 
-**A low-stock warning never blocks you.** The app will always let you record a vaccination.
+**A LOW or OUT warning never stops you.** The app will always let you record a vaccine.
 
-**Type the batch number once per box, not once per child.** When you give a dose, the batch is
-already filled in.
-
-**Expiry is the end of the printed month.** A vial marked 03/2027 is usable through 31 March 2027,
-and the app says so under the wheels.
+**Expiry means the end of that month.** A vial marked 03/2027 can be used until 31 March 2027. The
+app writes the last date under the wheels.
 
 ---
 
 ## If something looks wrong
 
-- **A number looks wrong** → **MORE → All entries** shows every entry in order. Tap
-  **Correct this entry** on the wrong one. It is never too late.
-- **A red message appears** → read it. It always says whether anything was saved. If it says
-  *nothing was saved*, nothing was.
-- **An amber bar asks you to back up** → tap **Back up**, or **Later** to be asked again tomorrow.
-- **Anything else** → send a screenshot on WhatsApp. Also send a backup file if you can: it contains
-  the whole picture.
+**A number looks wrong** — Tap **MORE**, then **All entries**. Every entry is there, newest first.
+Tap **Correct this entry** on the wrong one.
+
+**A red message comes up** — Read it. It always tells you if anything was saved. If it says nothing
+was saved, then nothing was saved.
+
+**A yellow bar asks you to back up** — Tap **Back up**. Or tap **Later** to be asked tomorrow.
+
+**Anything else** — Send a photo of the screen on WhatsApp. Also send a backup file if you can.
 
 ---
 
-## Backups — the one habit that matters
+## Backups
 
-The phone holds the records. Back it up when the app asks.
+The records are on this phone. Back it up when the app asks.
 
-**MORE → Back up / restore → Back up now** makes one file and offers to share it. Send it to yourself
-on WhatsApp, or save it to Drive. It is small and takes seconds.
+Tap **MORE** → **Back up / restore** → **Back up now**.
 
-If the phone is ever lost or replaced, that file puts everything back.
+It makes one small file. Send it to yourself on WhatsApp, or save it to Drive. It takes a few
+seconds.
+
+If the phone is lost or changed, that file puts everything back.
