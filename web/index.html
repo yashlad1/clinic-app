@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clinic Stock</title>
+<!-- viewport-fit=cover + the safe-area insets below keep content clear of the
+     iPhone notch and home indicator once saved to the home screen. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Clinic Stock">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+  /* Same scale and palette as the app (src/ui/tokens.ts): 18pt body, 14pt
+     floor, no grey below #55606E, and never colour without a word. */
+  :root {
+    --text: #0F172A; --muted: #55606E; --bg: #FFFFFF; --sunken: #F1F5F9;
+    --border: #E2E8F0; --ok: #15803D; --low: #B45309; --danger: #B91C1C;
+    --stock: #0F766E;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 18px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .eyebrow {
+    font-size: 14px; color: var(--muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .8px; margin: 24px 0 8px;
+  }
+  .hero { font-size: 34px; font-weight: 700; margin: 0; }
+  .sub { font-size: 16px; color: var(--muted); margin: 2px 0 0; }
+  .card {
+    border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 10px; background: var(--bg);
+  }
+  .row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .row:last-child { border-bottom: 0; }
+  .grow { flex: 1; min-width: 0; }
+  .name { font-weight: 600; }
+  .meta { font-size: 14px; color: var(--muted); }
+  .num { font-size: 22px; font-weight: 700; white-space: nowrap; }
+  .pill {
+    font-size: 14px; font-weight: 700; letter-spacing: .6px;
+    padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  }
+  .p-low { background: #FEF3C7; color: var(--low); }
+  .p-out, .p-check { background: #FEE2E2; color: var(--danger); }
+  .p-ok  { background: #DCFCE7; color: var(--ok); }
+  button {
+    font: inherit; font-weight: 600; min-height: 56px; width: 100%;
+    border-radius: 14px; border: 0; background: var(--stock); color: #fff;
+    padding: 0 16px;
+  }
+  button.ghost { background: var(--sunken); color: var(--text); }
+  input {
+    font: inherit; width: 100%; min-height: 56px; padding: 0 14px;
+    border: 2px solid var(--border); border-radius: 14px; background: var(--sunken);
+    color: var(--text); margin-bottom: 12px;
+  }
+  .warn {
+    background: #FEF3C7; color: var(--low); border-radius: 14px;
+    padding: 12px 16px; font-size: 16px; font-weight: 600; margin-bottom: 12px;
+  }
+  .err { color: var(--danger); font-weight: 600; font-size: 16px; }
+  .hide { display: none; }
+  .foot { font-size: 14px; color: var(--muted); margin: 24px 0 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section id="login">
+    <h1>Clinic Stock</h1>
+    <p class="sub">Sign in to see today's stock. This page can only read — it cannot change anything.</p>
+    <div style="margin-top:24px">
+      <input id="email" type="email" autocomplete="username" placeholder="Email" autocapitalize="off" autocorrect="off">
+      <input id="password" type="password" autocomplete="current-password" placeholder="Password">
+      <button id="signin">Sign in</button>
+      <p id="loginError" class="err hide"></p>
+    </div>
+  </section>
+
+  <section id="dash" class="hide">
+    <h1>Clinic Stock</h1>
+    <p class="sub" id="asOf">—</p>
+
+    <div id="staleWarn" class="warn hide"></div>
+
+    <p class="eyebrow">Today</p>
+    <div class="card">
+      <p class="hero" id="todayCount">—</p>
+      <p class="sub" id="lastEntry">—</p>
+    </div>
+
+    <p class="eyebrow">Devices</p>
+    <div class="card" id="devices"></div>
+
+    <p class="eyebrow">Needs attention</p>
+    <div class="card" id="attention"></div>
+
+    <p class="eyebrow">All stock</p>
+    <div class="card" id="stock"></div>
+
+    <p class="eyebrow">Today's entries</p>
+    <div class="card" id="entries"></div>
+
+    <p class="foot" id="footNote"></p>
+    <button class="ghost" id="refresh">Refresh</button>
+    <p style="height:8px"></p>
+    <button class="ghost" id="signout">Sign out</button>
+  </section>
+
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
