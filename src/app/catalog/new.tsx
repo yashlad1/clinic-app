@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BigButton, Chip, Field, Footer, Input, Stepper, T } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useDb } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { insertVaccine } from '../../db/repo/catalog';
@@ -59,7 +60,7 @@ export default function NewVaccineScreen() {
   return (
     <View style={st.screen}>
       <ScrollView
-        contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl }}
+        contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl }]}
         keyboardShouldPersistTaps="handled"
       >
         <Field label="Trade name" hint="Exactly as printed on the vial, e.g. Pentavac PFS.">

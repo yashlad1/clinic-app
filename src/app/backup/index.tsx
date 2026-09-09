@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { BigButton, ErrorState, Loading, Row, T, useBottomInset } from '../../ui/components';
 import { color, radius, space, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { SETTING, getNumber, getSetting, markBackedUp } from '../../db/repo/settings';
@@ -99,7 +100,7 @@ export default function BackupScreen() {
   };
 
   return (
-    <ScrollView style={st.screen} contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl + bottomInset }}>
+    <ScrollView style={st.screen} contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl + bottomInset }]}>
       <View style={st.card}>
         <T style={st.status}>{lastBackupLabel(meta.lastBackupAt)}</T>
         <T style={st.sub}>

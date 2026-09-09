@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { BigButton, ErrorState, Field, Input, Loading, Row, T, useBottomInset } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { useAction } from '../../ui/use-action';
@@ -28,7 +29,7 @@ export default function SettingsScreen() {
   if (!staff) return <Loading />;
 
   return (
-    <ScrollView style={st.screen} contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl + bottomInset }}>
+    <ScrollView style={st.screen} contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl + bottomInset }]}>
       <Field label="Clinic name" hint="Shown on exported reports.">
         <Input value={clinic} onChangeText={setClinic} autoCapitalize="words" />
       </Field>

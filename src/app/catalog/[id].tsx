@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BigButton, Chip, ErrorState, Field, Footer, Input, Loading, SecondaryButton, Stepper, T } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { useAction } from '../../ui/use-action';
@@ -61,7 +62,7 @@ export default function EditVaccineScreen() {
 
   return (
     <View style={st.screen}>
-      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl }}>
+      <ScrollView contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl }]}>
         <Field label="Trade name" hint="Exactly as printed on the vial.">
           <Input value={name} onChangeText={setName} autoCapitalize="words" autoCorrect={false} />
         </Field>

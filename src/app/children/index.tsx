@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { Empty, ErrorState, Input, Loading, Row, T, useBottomInset } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useQuery } from '../../db/provider';
 import { searchPatients } from '../../db/repo/patients';
 
@@ -36,7 +37,7 @@ export default function ChildrenScreen() {
       <FlatList
         data={data ?? []}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl + bottomInset }}
+        contentContainerStyle={[centred, { paddingHorizontal: space.lg, paddingBottom: space.xxl + bottomInset }]}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           <Empty

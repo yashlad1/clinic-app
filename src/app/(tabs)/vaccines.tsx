@@ -3,6 +3,7 @@ import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Badge, BigButton, Card, Chip, ErrorState, Footer, Input, Loading, T, useBottomInset } from '../../ui/components';
 import { color, radius, space, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { useAction } from '../../ui/use-action';
@@ -92,7 +93,7 @@ export default function VaccinesScreen() {
       <FlatList
         data={rows}
         keyExtractor={(v) => v.id}
-        contentContainerStyle={{ paddingBottom: 140 + bottomInset }}
+        contentContainerStyle={[centred, { paddingBottom: 140 + bottomInset }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={

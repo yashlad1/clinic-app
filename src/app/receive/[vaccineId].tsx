@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BigButton, Chip, ErrorState, Field, Footer, Input, Loading, Stepper, T } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { useAction } from '../../ui/use-action';
@@ -88,7 +89,7 @@ export default function ReceiveScreen() {
 
   return (
     <View style={st.screen}>
-      <ScrollView contentContainerStyle={st.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[st.content, centred]} keyboardShouldPersistTaps="handled">
         <T style={st.name}>{vaccine.name}</T>
         <T style={st.sub}>
           {byVial ? `Counted in vials of ${vaccine.doses_per_vial} doses` : 'Counted in single doses'}

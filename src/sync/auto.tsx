@@ -26,6 +26,21 @@ import { adoptOrSeed } from './adopt';
 /** Long enough that a queue of siblings becomes one upload, not five. */
 const DEBOUNCE_MS = 4000;
 
+/**
+ * A heartbeat, on top of the write-triggered and foreground-triggered passes.
+ *
+ * Those two cover almost everything, but not the case that matters most for
+ * someone checking from home: the app left open on a clinic counter all
+ * afternoon, with entries going in on the OTHER device. Without a timer this
+ * one never pulls, so its screen quietly drifts out of date while looking
+ * authoritative.
+ *
+ * Fifteen minutes because that is the resolution the question needs - "is
+ * today's stock roughly right" - and because a sync is a few kilobytes: a
+ * whole day of heartbeats costs less than one photo.
+ */
+const HEARTBEAT_MS = 15 * 60 * 1000;
+
 export function useSyncEngine() {
   const { db, deviceId, revision } = useDb();
   const running = useRef(false);
@@ -78,6 +93,19 @@ export function useSyncEngine() {
       if (s === 'active') void syncNow();
     });
     return () => sub.remove();
+  }, [syncNow]);
+
+  // Every 15 minutes while the app is open. `syncNow` already refuses to run
+  // concurrently with itself, so a tick landing on top of a write-triggered
+  // pass is a no-op rather than a duplicate upload.
+  useEffect(() => {
+    const id = setInterval(() => {
+      // Only while in the foreground: a background timer would not fire
+      // reliably on Android anyway, and pretending otherwise invites trust in
+      // a guarantee that does not exist.
+      if (AppState.currentState === 'active') void syncNow();
+    }, HEARTBEAT_MS);
+    return () => clearInterval(id);
   }, [syncNow]);
 
   return syncNow;

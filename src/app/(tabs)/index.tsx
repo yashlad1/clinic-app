@@ -8,6 +8,7 @@ import { dosesGivenTotals, vaccinesByUsage } from '../../domain/reports';
 import { describeStockRow } from '../../domain/stock';
 import { daysAgoLocal, formatDayLabel, todayLocal } from '../../domain/time';
 import { BackupBanner } from '../../ui/backup-banner';
+import { useColumns } from '../../ui/layout';
 import { isAwaitingCatalog, startNewClinicHere } from '../../sync/adopt';
 import { useAction } from '../../ui/use-action';
 
@@ -22,6 +23,7 @@ import { useAction } from '../../ui/use-action';
 export default function GiveDoseScreen() {
   const router = useRouter();
   const bottomInset = useBottomInset();
+  const columns = useColumns();
   const run = useAction();
   const { db, deviceId, bump } = useDb();
   const [q, setQ] = useState('');
@@ -120,7 +122,10 @@ export default function GiveDoseScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(r) => r.vaccine_id}
-        numColumns={2}
+        // FlatList caches its layout per column count, so it must be re-keyed
+        // when that changes - otherwise a rotation leaves the old grid behind.
+        key={`cols-${columns}`}
+        numColumns={columns}
         columnWrapperStyle={{ gap: space.md }}
         contentContainerStyle={[st.grid, { paddingBottom: space.xxl + bottomInset }]}
         keyboardShouldPersistTaps="handled"

@@ -327,6 +327,16 @@ These are requirements, not preferences.
 
 - **56×56dp minimum** touch targets (Android's guideline is 48 — go bigger). Primary CTAs 64dp tall,
   full width, in the bottom third. Portrait locked.
+- **Tablets: bound the text, not the grid.** The type scale was chosen for a ~400dp phone; nothing
+  about it is wrong on a tablet, but the *container* is — an 18pt line across 800dp is a long measure,
+  and a full-width input for a six-character batch number looks broken. So text, forms, lists and the
+  `Footer` are capped at `CONTENT_MAX` (560) and centred (`centred` in `src/ui/layout.ts`).
+  **The vaccine grid is deliberately NOT capped.** Capping it made tiles *shrink* as the screen grew
+  (123dp on a 10-inch tablet, against 184dp on a phone). Instead `useColumns()` adds columns —
+  2 on a phone, 3–4 on a tablet, 6 in landscape — holding the tile at 158–198dp everywhere. A tile
+  twice the size is not twice as easy to hit; it just pushes the rest of the grid off screen, and the
+  grid being scannable at a glance is the whole point of the home screen.
+  `FlatList` must be re-keyed on the column count or a rotation keeps the old layout.
 - **Never position anything at `bottom: 0` directly.** Android's three-button navigation bar overlays
   it, and because every primary CTA lives in the bottom third by the rule above, the button is not
   merely clipped — it is *untappable*. Use `Footer` from `src/ui/components.tsx`, which adds
@@ -449,6 +459,17 @@ every upgrade, and we use four endpoints.
 unchanged: recording a dose must never be blocked. Sync is a background push that cannot fail the
 user — it never blocks, never opens a dialog, and never reports its own failures as errors, because
 a failed sync is not a failed dose. Status lives quietly on More.
+
+It runs on three triggers: **4s after any write**, **on return to the foreground**, and a
+**15-minute heartbeat** while the app is open. The heartbeat exists for the case the other two miss —
+the app left open on a clinic counter while entries go in on the *other* device — where the screen
+would otherwise drift out of date while looking authoritative. It only fires in the foreground; an
+Android background timer is not a guarantee worth pretending to have. `syncNow` refuses to run
+concurrently with itself, so overlapping triggers are no-ops rather than duplicate uploads.
+
+**More** also carries an explicit `UPLOAD NOW`, one tap deep. It is not needed for correctness, but
+"did it actually go?" is a fair thing to want settled before leaving the clinic, and it pulls before
+pushing so it takes in the other device's entries too.
 
 ### Push-only, deliberately
 

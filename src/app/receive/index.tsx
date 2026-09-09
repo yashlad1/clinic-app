@@ -3,6 +3,7 @@ import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ErrorState, Input, Loading, T, useBottomInset } from '../../ui/components';
 import { color, radius, space, touch, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useQuery } from '../../db/provider';
 import { stockOnHand } from '../../domain/reports';
 import { describeStockRow } from '../../domain/stock';
@@ -33,7 +34,7 @@ export default function ReceivePickScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(r) => r.vaccine_id}
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl + bottomInset }}
+        contentContainerStyle={[centred, { paddingHorizontal: space.lg, paddingBottom: space.xxl + bottomInset }]}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
           const d = describeStockRow(item);

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { centred } from './layout';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
 import { T } from './components';
 import { type Accent, accentColor, accentSoft, color, radius, space, touch, type, weight } from './tokens';
@@ -38,7 +39,10 @@ export function TopTabBar({ state, descriptors, navigation }: BottomTabBarProps)
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={st.row}
+        // Centred and bounded on a tablet, so the four tabs stay together as
+        // a group instead of drifting apart across ten inches. On a phone this
+        // is a no-op.
+        contentContainerStyle={[st.row, centred]}
         // Keeps the bar usable when enlarged text makes it wider than the screen.
         bounces={false}
       >

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { friendlyError } from './errors';
+import { centred } from './layout';
 import {
   MAX_FONT_SCALE, type Accent, accentColor, accentSoft, color, elevation, radius, space, touch,
   type, weight,
@@ -85,11 +86,13 @@ export function Footer({
         floating ? s.footerFloating : null,
         floating ? elevation(3) : null,
         { paddingBottom: space.lg + insets.bottom },
-        gap ? { gap } : null,
         style,
       ]}
     >
-      {children}
+      {/* Bounded and centred: a 64dp CTA stretched across a 10-inch tablet is
+          a worse target, not a better one - the thumb still lands in one
+          place. `gap` belongs on this inner view, with the buttons. */}
+      <View style={[centred, gap ? { gap } : null]}>{children}</View>
     </View>
   );
 }

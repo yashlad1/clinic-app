@@ -3,6 +3,7 @@ import { FlatList, StyleSheet, View } from 'react-native';
 import { Badge, Empty, ErrorState, Loading, SecondaryButton, T, useBottomInset } from '../../ui/components';
 import { useAction } from '../../ui/use-action';
 import { color, space, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { newId } from '../../domain/ids';
 import { reverseMovement } from '../../domain/ledger';
@@ -67,7 +68,7 @@ export default function LedgerScreen() {
       style={st.screen}
       data={data}
       keyExtractor={(m) => m.id}
-      contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl + bottomInset }}
+      contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl + bottomInset }]}
       renderItem={({ item }) => {
         const undone = item.is_reversed === 1;
         return (

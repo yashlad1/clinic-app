@@ -1,18 +1,64 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Badge, Card, Row, SectionTitle, T, useBottomInset } from '../../ui/components';
+import { Badge, BigButton, Card, Row, SectionTitle, T, useBottomInset } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
-import { useQuery } from '../../db/provider';
+import { centred } from '../../ui/layout';
+import { useDb, useQuery } from '../../db/provider';
 import { SETTING, getSetting } from '../../db/repo/settings';
 import { lastBackupLabel } from '../../domain/backup-nag';
 import { missingChildEntries } from '../../domain/reports';
-import { syncStatus } from '../../sync/push';
+import { pushOnce, syncStatus } from '../../sync/push';
+import { pullOnce } from '../../sync/pull';
+import { backendFor } from '../../sync/config';
+import { useToast } from '../../ui/snackbar';
+import { useAction } from '../../ui/use-action';
 
 /** Everything infrequent, as a flat list of large labelled rows. */
 export default function MoreScreen() {
   const bottomInset = useBottomInset();
   const router = useRouter();
+  const { db, deviceId, bump } = useDb();
+  const toast = useToast();
+  const run = useAction();
+  const [busy, setBusy] = React.useState(false);
+
+  /**
+   * Upload now, one tap from the More tab rather than two.
+   *
+   * Syncing is automatic - after each entry, on returning to the app, and every
+   * 15 minutes - so this button is not needed for the app to work. It exists
+   * because "did it actually go?" is a reasonable thing to want to settle
+   * before leaving the clinic, and a button that answers it in one tap is worth
+   * more than a correct claim that it was unnecessary.
+   */
+  const uploadNow = () =>
+    void run('upload your entries', async () => {
+      setBusy(true);
+      try {
+        const backend = await backendFor(db);
+        if (!backend) {
+          toast.showError('Server backup is not set up yet.');
+          return;
+        }
+        // Pull first, same order as the automatic pass, so this device takes in
+        // the other one's entries as well as sending its own.
+        await pullOnce(db, backend);
+        const out = await pushOnce(db, backend, deviceId);
+        bump();
+        if (!out.ok) {
+          toast.showError(out.error ?? 'Could not upload. Your entries are safe on this phone.');
+          return;
+        }
+        toast.show(
+          out.pushedRows
+            ? `Uploaded ${out.pushedRows} ${out.pushedRows === 1 ? 'entry' : 'entries'}.`
+            : 'Already up to date.',
+        );
+      } finally {
+        setBusy(false);
+      }
+    });
 
   const { data: lastBackupAt } = useQuery(
     async (db) => Number(await getSetting(db, SETTING.lastBackupAt)) || null,
@@ -23,7 +69,7 @@ export default function MoreScreen() {
   return (
     <ScrollView
       style={st.screen}
-      contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl + bottomInset }}
+      contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl + bottomInset }]}
       showsVerticalScrollIndicator={false}
     >
       <Card tone="soft">
@@ -49,6 +95,20 @@ export default function MoreScreen() {
           onPress={() => router.push('/sync')}
           last
         />
+        <View style={{ marginTop: space.md }}>
+          <BigButton
+            accent="stock"
+            variant="outline"
+            label={busy ? 'UPLOADING…' : 'UPLOAD NOW'}
+            sublabel={
+              sync && sync.pending > 0
+                ? `${sync.pending} ${sync.pending === 1 ? 'entry' : 'entries'} not on the server yet`
+                : 'Send today\u2019s entries to the server'
+            }
+            onPress={uploadNow}
+            disabled={busy}
+          />
+        </View>
       </Card>
 
       <SectionTitle>Reports</SectionTitle>

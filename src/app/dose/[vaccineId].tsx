@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BigButton, Chip, Empty, ErrorState, Field, Footer, Input, Loading, SecondaryButton, Stepper, T } from '../../ui/components';
 import { color, radius, space, touch, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { useAction } from '../../ui/use-action';
@@ -147,7 +148,7 @@ export default function DoseScreen() {
 
   return (
     <View style={st.screen}>
-      <ScrollView contentContainerStyle={st.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[st.content, centred]} keyboardShouldPersistTaps="handled">
         {/* The vaccine name IS the confirmation, and it costs no tap. */}
         <T style={st.name}>{vaccine.name}</T>
         <T style={st.stock}>

@@ -66,8 +66,3 @@ clinic-backup-*.zip
 .env
 .env.*
 !.env.example
-
-# Dashboard credentials. The publishable key is useless on its own (anon is
-# REVOKEd server-side) but the repo is public, so nothing clinic-identifying
-# gets committed. See web/config.example.js.
-web/config.js

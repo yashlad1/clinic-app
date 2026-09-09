@@ -4,6 +4,7 @@ import {
   BigButton, Chip, ErrorState, Field, Input, Loading, Row, SecondaryButton, T, useBottomInset,
 } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { useAction } from '../../ui/use-action';
@@ -145,7 +146,7 @@ export default function SyncScreen() {
   return (
     <ScrollView
       style={st.screen}
-      contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl + bottomInset }}
+      contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl + bottomInset }]}
       keyboardShouldPersistTaps="handled"
     >
       <T style={st.intro}>

@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { BigButton, Empty, ErrorState, Input, Loading, Row, SecondaryButton, T, useBottomInset } from '../../ui/components';
 import { useAction } from '../../ui/use-action';
 import { color, radius, space, type, weight } from '../../ui/tokens';
+import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { asOfLabel, dosesGiven, dosesGivenTotals, movementStrip } from '../../domain/reports';
 import { fillMissingChild } from '../../domain/ledger';
@@ -27,7 +28,7 @@ export default function TodayScreen() {
   const total = (totals ?? []).reduce((n, t) => n + t.doses, 0);
 
   return (
-    <ScrollView style={st.screen} contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxl + bottomInset }}>
+    <ScrollView style={st.screen} contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl + bottomInset }]}>
       <T style={st.day}>{formatDayLabel()}</T>
       <T style={st.total}>
         {total} {total === 1 ? 'dose' : 'doses'} given
