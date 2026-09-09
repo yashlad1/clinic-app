@@ -70,6 +70,8 @@
     background: #FEF3C7; color: var(--low); border-radius: 14px;
     padding: 12px 16px; font-size: 16px; font-weight: 600; margin-bottom: 12px;
   }
+  .warn.danger { background: #FEE2E2; color: var(--danger); }
+  button:disabled { opacity: .6; }
   .err { color: var(--danger); font-weight: 600; font-size: 16px; }
   .hide { display: none; }
   .foot { font-size: 14px; color: var(--muted); margin: 24px 0 8px; }
@@ -94,6 +96,10 @@
     <p class="sub" id="asOf">—</p>
 
     <div id="staleWarn" class="warn hide"></div>
+    <!-- Load failures used to be written into the small grey subtitle, where
+         they read as a cosmetic label change rather than "this page is not
+         showing you the truth". -->
+    <div id="loadError" class="warn danger hide"></div>
 
     <p class="eyebrow">Today</p>
     <div class="card">
@@ -114,6 +120,10 @@
     <div class="card" id="entries"></div>
 
     <p class="foot" id="footNote"></p>
+    <!-- Muted, not amber, on purpose. "Nothing new" is the normal healthy
+         state; colouring it as a warning would train the eye to skip amber,
+         and amber has to stay meaningful for the staleness banner above. -->
+    <p class="sub" id="checked" style="margin:0 0 8px">—</p>
     <button class="ghost" id="refresh">Refresh</button>
     <p style="height:8px"></p>
     <button class="ghost" id="signout">Sign out</button>
