@@ -1,0 +1,49 @@
+name: Schema drift
+
+on:
+  push:
+    branches: [main, hardening]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: generated schemas match the migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: npm
+      - run: npm ci --include=dev
+
+      # Why this job exists, separately from the tests.
+      #
+      # supabase/schema.sql is GENERATED from the SQLite schema. PostgREST
+      # rejects an unknown column with a 400, so a migration that adds a column
+      # without regenerating this file silently breaks every push of that table -
+      # and it breaks it on the phone, in a clinic, where nobody is reading logs.
+      #
+      # The failure is invisible in every other check: types pass, tests pass,
+      # the app runs. Only a diff catches it.
+      # `-s` matters: without it npm prints its own banner to STDOUT and it
+      # lands inside the generated .sql, so the diff would fail on every run
+      # regardless of the schema.
+      - name: Regenerate
+        run: |
+          npm run -s schema:dump
+          npm run -s supabase:schema > supabase/schema.sql
+
+      - name: Fail if the committed files are stale
+        run: |
+          if ! git diff --quiet -- docs/schema.sql supabase/schema.sql; then
+            echo "::error::Generated schema is out of date. Run 'npm run schema:dump' and 'npm run supabase:schema > supabase/schema.sql', then commit."
+            git --no-pager diff -- docs/schema.sql supabase/schema.sql
+            exit 1
+          fi
+          echo "Generated schemas are current."
