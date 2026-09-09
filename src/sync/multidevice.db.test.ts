@@ -3,7 +3,7 @@ import { migrate } from '../db/migrate';
 import { memoryBackend } from './backend.memory';
 import { pushOnce, countDirty } from './push';
 import { pullOnce } from './pull';
-import { adoptOrSeed, isPrimaryDevice } from './adopt';
+import { adoptOrSeed, isAwaitingCatalog, isPrimaryDevice, startNewClinicHere } from './adopt';
 import { saveSyncConfig } from './config';
 import { insertVaccine, seedCatalog } from '../db/repo/catalog';
 import { findOrCreateLot } from '../db/repo/lots';
@@ -322,5 +322,38 @@ describe('pull mechanics', () => {
         `SELECT min_balance_doses FROM vaccines WHERE id = ?`, [vId]);
       expect(v!.min_balance_doses).toBe(9);
     }
+  });
+});
+
+describe('the escape hatch for an unreachable server', () => {
+  it('lets the first phone start the list when the server never answers', async () => {
+    // adoptOrSeed refuses to seed when it cannot reach the server, which is
+    // correct - but it must not leave the app empty with no way forward.
+    const db = openNodeDb(':memory:');
+    await db.exec('PRAGMA foreign_keys = ON');
+    await migrate(db);
+    const deviceId = await ensureDeviceId(db);
+
+    expect(await isAwaitingCatalog(db)).toBe(true);
+    const n = await startNewClinicHere(db, deviceId);
+    expect(n).toBeGreaterThan(10);
+    expect(await isAwaitingCatalog(db)).toBe(false);
+    expect(await isPrimaryDevice(db)).toBe(true);
+  });
+
+  it('refuses on a device that already has a catalog', async () => {
+    // The duplicate case. Offering this on a device that already adopted a
+    // catalog would create exactly the second copy the whole design avoids.
+    const server = memoryBackend();
+    const A = await device(server, 'A');
+    await seedCatalog(A.db, A.deviceId);
+    await A.sync();
+    const B = await device(server, 'B');
+    await adoptOrSeed(B.db, B.deviceId, server.backend);
+
+    const before = await B.db.first<{ n: number }>(`SELECT COUNT(*) AS n FROM vaccines`);
+    expect(await startNewClinicHere(B.db, B.deviceId)).toBe(0);
+    const after = await B.db.first<{ n: number }>(`SELECT COUNT(*) AS n FROM vaccines`);
+    expect(after!.n).toBe(before!.n);
   });
 });

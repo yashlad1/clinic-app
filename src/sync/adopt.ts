@@ -75,3 +75,42 @@ export async function adoptOrSeed(
 export async function isPrimaryDevice(db: Db): Promise<boolean> {
   return (await getSetting(db, SETTING.isPrimaryDevice)) !== '0';
 }
+
+/**
+ * Escape hatch: seed anyway, on the user's explicit say-so.
+ *
+ * `adoptOrSeed` refuses to seed when the server cannot be reached, because
+ * guessing wrong creates a duplicate catalog that cannot be cleanly undone.
+ * That is the right default, but it leaves an unreachable-server device showing
+ * an empty grid with no way forward - safe, and indistinguishable from broken.
+ *
+ * So the decision it cannot make safely is handed to the person who actually
+ * knows the answer: is this the first device, or is it joining a clinic that
+ * already exists? Offered only when the catalog is genuinely empty, and worded
+ * as a choice about the clinic rather than about syncing.
+ */
+export async function startNewClinicHere(
+  db: Db,
+  deviceId: string,
+  now: number = Date.now(),
+): Promise<number> {
+  const existing = await db.first<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM vaccines WHERE deleted_at IS NULL`,
+  );
+  // Never on a device that already has a catalog - that is the duplicate case.
+  if ((existing?.n ?? 0) > 0) return 0;
+
+  const n = await seedCatalog(db, deviceId, now);
+  await setSetting(db, SETTING.catalogSeeded, '1', now);
+  await setSetting(db, SETTING.isPrimaryDevice, '1', now);
+  return n;
+}
+
+/** True when this device is waiting for a catalog it cannot reach. */
+export async function isAwaitingCatalog(db: Db): Promise<boolean> {
+  if (await getSetting(db, SETTING.catalogSeeded)) return false;
+  const n = await db.first<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM vaccines WHERE deleted_at IS NULL`,
+  );
+  return (n?.n ?? 0) === 0;
+}

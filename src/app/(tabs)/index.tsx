@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Badge, ErrorState, Input, Loading, T, useBottomInset } from '../../ui/components';
+import { Badge, ErrorState, Input, Loading, SecondaryButton, T, useBottomInset } from '../../ui/components';
 import { color, elevation, radius, space, type, weight } from '../../ui/tokens';
-import { useQuery } from '../../db/provider';
+import { useDb, useQuery } from '../../db/provider';
 import { dosesGivenTotals, vaccinesByUsage } from '../../domain/reports';
 import { describeStockRow } from '../../domain/stock';
 import { daysAgoLocal, formatDayLabel, todayLocal } from '../../domain/time';
 import { BackupBanner } from '../../ui/backup-banner';
+import { isAwaitingCatalog, startNewClinicHere } from '../../sync/adopt';
+import { useAction } from '../../ui/use-action';
 
 /**
  * HOME IS THE DOSE-ENTRY SCREEN, NOT A DASHBOARD.
@@ -20,12 +22,15 @@ import { BackupBanner } from '../../ui/backup-banner';
 export default function GiveDoseScreen() {
   const router = useRouter();
   const bottomInset = useBottomInset();
+  const run = useAction();
+  const { db, deviceId, bump } = useDb();
   const [q, setQ] = useState('');
   const today = todayLocal();
   const since = daysAgoLocal(30);
 
   const { data: rows, loading, error, reload } = useQuery((db) => vaccinesByUsage(db, since), [since]);
   const { data: given } = useQuery((db) => dosesGivenTotals(db, today), [today]);
+  const { data: awaiting } = useQuery((d) => isAwaitingCatalog(d), []);
 
   const dosesToday = (given ?? []).reduce((n, g) => n + g.doses, 0);
 
@@ -122,11 +127,36 @@ export default function GiveDoseScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={{ padding: space.xl }}>
-            <T style={st.emptyText}>
-              {q
-                ? `No vaccine matches "${q}".`
-                : 'No vaccines yet. Add one from the Vaccines tab.'}
-            </T>
+            {q ? (
+              <T style={st.emptyText}>No vaccine matches &quot;{q}&quot;.</T>
+            ) : awaiting ? (
+              // Sync is switched on but the server has not answered, so the
+              // vaccine list has deliberately NOT been created here: guessing
+              // wrong makes a second copy of the catalog, which is the one
+              // mistake that cannot be cleanly undone. The app cannot know
+              // whether this is the first phone or a second one, so it asks.
+              <>
+                <T style={st.emptyText}>
+                  Waiting for the clinic&apos;s vaccine list. Check the internet connection — it
+                  will load on its own.
+                </T>
+                <T style={st.emptyHint}>
+                  If this is the first phone in the clinic, you can start the list here instead.
+                </T>
+                <SecondaryButton
+                  label="Start a new list on this phone"
+                  onPress={() =>
+                    void run('start the vaccine list', async () => {
+                      const n = await startNewClinicHere(db, deviceId);
+                      bump();
+                      if (n === 0) return;
+                    })
+                  }
+                />
+              </>
+            ) : (
+              <T style={st.emptyText}>No vaccines yet. Add one from the Vaccines tab.</T>
+            )}
           </View>
         }
         renderItem={({ item }) => {
@@ -182,6 +212,10 @@ const st = StyleSheet.create({
   count: { fontSize: type.hero, fontWeight: weight.bold, color: color.text, marginTop: 2 },
   pad: { paddingHorizontal: space.lg, paddingBottom: space.md, gap: space.md },
   emptyText: { fontSize: type.body, color: color.textMuted, textAlign: 'center', lineHeight: 26 },
+  emptyHint: {
+    fontSize: type.label, color: color.textMuted, textAlign: 'center',
+    lineHeight: 24, marginTop: space.lg, marginBottom: space.sm,
+  },
 
   grid: { paddingHorizontal: space.lg, gap: space.md },
   tile: {
