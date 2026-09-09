@@ -34,13 +34,23 @@ Replace `YOUR_EMAIL` with your own real email address, and `THE_PASSWORD` with w
 - The **email** and **password** are not found anywhere in Supabase. They are the account the app
   creates for itself.
 
-```sh
-E="npx --yes eas-cli@23.2.0 env:create --scope project --environment production --visibility plaintext --non-interactive"
+Written out in full, one per line. An earlier version of this file shortened the repeated part
+into a shell variable, which fails on macOS: **zsh does not word-split an unquoted variable**, so
+`$E --name ...` is read as one enormous command name and you get
+`zsh: command not found`. Repetition is the safer choice here.
 
-$E --name EXPO_PUBLIC_SYNC_URL      --value "https://sxgvsslhtttjfltuoodm.supabase.co"
-$E --name EXPO_PUBLIC_SYNC_KEY      --value "sb_publishable_ZpWboAqep2Y2LYiYjpbNPA_-SNFzdv8"
-$E --name EXPO_PUBLIC_SYNC_EMAIL    --value "YOUR_EMAIL"
-$E --name EXPO_PUBLIC_SYNC_PASSWORD --value "THE_PASSWORD"
+**Use single quotes on the value.** A password containing `$` would otherwise be partly eaten by the
+shell — `"Y@$hL@d276"` becomes `Y@hL@d276` — and the app would then sign in with a password that is
+not the one you stored. That failure looks like a server problem, not a quoting problem.
+
+```sh
+npx --yes eas-cli@23.2.0 env:create --scope project --environment production --visibility plaintext --non-interactive --name EXPO_PUBLIC_SYNC_URL --value 'https://YOURPROJECT.supabase.co'
+
+npx --yes eas-cli@23.2.0 env:create --scope project --environment production --visibility plaintext --non-interactive --name EXPO_PUBLIC_SYNC_KEY --value 'sb_publishable_...'
+
+npx --yes eas-cli@23.2.0 env:create --scope project --environment production --visibility plaintext --non-interactive --name EXPO_PUBLIC_SYNC_EMAIL --value 'you@example.com'
+
+npx --yes eas-cli@23.2.0 env:create --scope project --environment production --visibility plaintext --non-interactive --name EXPO_PUBLIC_SYNC_PASSWORD --value 'the-password-from-step-1'
 ```
 
 If a name already exists, `env:create` refuses rather than overwriting. Change it with:
