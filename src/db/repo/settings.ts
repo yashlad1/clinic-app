@@ -9,6 +9,16 @@ export const SETTING = {
   dosesSinceBackup: 'doses_since_backup',
   onboardingDone: 'onboarding_done',
   catalogSeeded: 'catalog_seeded',
+  /**
+   * '1' on the device that started the clinic, '0' on one that joined it.
+   *
+   * Set automatically, not asked: a device that seeded its own catalog is the
+   * first one; a device that adopted a catalog from the server joined later.
+   * Only the primary device may add vaccines, which removes almost all of the
+   * duplicate-catalog hazard at no cost to anyone - adding a vaccine is an
+   * admin action, not a daily one.
+   */
+  isPrimaryDevice: 'is_primary_device',
 } as const;
 
 export async function getSetting(db: Db, key: string): Promise<string | null> {

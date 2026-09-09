@@ -104,3 +104,46 @@ describe('migration 002 (sync columns)', () => {
     await expect(db.run(`DELETE FROM stock_movements WHERE id = 'm1'`)).rejects.toThrow(/append-only/);
   });
 });
+
+describe('migration 003 (multi-device)', () => {
+  it('lets two devices log the same batch, which v2 forbade', async () => {
+    const db = await buildV1();
+    await migrate(db);
+    // Two rows for one physical batch: what happens when two devices both log
+    // a delivery from lot AB1 before syncing. Under v2's UNIQUE index the
+    // second insert was rejected, which meant refusing a real delivery.
+    await db.run(
+      `INSERT INTO lots (id,vaccine_id,lot_number,funding_source,first_received_at,created_at,updated_at,device_id)
+       VALUES ('l2','v1','AB1','PRIVATE',?,?,?,?)`,
+      [NOW, NOW, NOW, 'other-phone'],
+    );
+    const n = await db.first<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM lots WHERE vaccine_id='v1' AND lot_number='AB1'`);
+    expect(n!.n).toBe(2);
+  });
+
+  it('still refuses two catalog rows for one vaccine name', async () => {
+    // The lots index was relaxed; this one must NOT be. It is what makes "one
+    // row per vaccine" true, which is the entire point of the app.
+    const db = await buildV1();
+    await migrate(db);
+    await expect(
+      db.run(
+        `INSERT INTO vaccines (id,name,unit_mode,doses_per_vial,min_balance_doses,created_at,updated_at,device_id)
+         VALUES ('v2','BCG','VIAL',10,20,?,?,?)`, [NOW, NOW, 'other-phone']),
+    ).rejects.toThrow(/UNIQUE/);
+  });
+
+  it('gives every replicated table a pull cursor starting from the beginning', async () => {
+    const db = await buildV1();
+    await migrate(db);
+    const rows = await db.all<{ table_name: string; server_synced_at: string | null }>(
+      `SELECT table_name, server_synced_at FROM sync_cursor ORDER BY table_name`);
+    expect(rows.map((r) => r.table_name).sort()).toEqual(
+      ['lots', 'patients', 'staff', 'stock_movements', 'vaccines'],
+    );
+    // NULL means "everything the server has", so an upgraded phone pulls the
+    // clinic's full history rather than only what happens next.
+    expect(rows.every((r) => r.server_synced_at === null)).toBe(true);
+  });
+});

@@ -98,6 +98,147 @@ const main = async () => {
     }
   }
 
+  // --------------------------------------------------------------------
+  // Uniqueness. Missing from the first version of this file, which was a
+  // real defect: without UNIQUE(reverses_id) the server accepts two
+  // reversals of one dose, and any device that pulls both double-credits
+  // the stock. Unreachable while nothing pulled; reachable now.
+  // --------------------------------------------------------------------
+  out.push(`-- ${'-'.repeat(74)}`);
+  out.push('-- Uniqueness');
+  out.push(`-- ${'-'.repeat(74)}`);
+  out.push('-- One intent, one row. `idempotency_key` is deviceId:clientActionId, so');
+  out.push('-- this is stable across devices and across retries.');
+  out.push('CREATE UNIQUE INDEX IF NOT EXISTS ux_movements_idempotency');
+  out.push('  ON public.stock_movements (idempotency_key);');
+  out.push('');
+  out.push('-- A movement may be reversed AT MOST ONCE. This is what stops stock being');
+  out.push('-- credited twice when two offline devices both correct the same entry.');
+  out.push('CREATE UNIQUE INDEX IF NOT EXISTS ux_movements_reverses');
+  out.push('  ON public.stock_movements (reverses_id) WHERE reverses_id IS NOT NULL;');
+  out.push('');
+  out.push('-- Lot identity is deliberately NOT unique here, matching migration 003:');
+  out.push('-- two devices may both log a delivery from the same batch, and rejecting a');
+  out.push('-- real delivery to protect an index is the wrong way round. Totals stay');
+  out.push('-- correct because stock sums movements, not lots.');
+  out.push('CREATE INDEX IF NOT EXISTS ix_lots_identity');
+  out.push('  ON public.lots (vaccine_id, lot_number, funding_source);');
+  out.push('');
+  out.push('-- Vaccine name is also NOT unique here, and that is a considered choice.');
+  out.push('-- Enforcing it would make a duplicate name reject the whole push batch, so');
+  out.push('-- one admin mistake would stop the ledger being backed up at all. The');
+  out.push('-- phone keeps its own UNIQUE index, and pull resolves a collision by');
+  out.push('-- importing the loser renamed and flagging it for merge.');
+  out.push('CREATE INDEX IF NOT EXISTS ix_vaccines_name ON public.vaccines (name);');
+  out.push('');
+  // ------------------------------------------------------------------
+  // Last-write-wins, enforced HERE and not only in the clients.
+  //
+  // A push is an unconditional upsert, so without this the row simply takes
+  // the value of whichever device pushed LAST - which has nothing to do with
+  // when the edit was made. Two devices editing one vaccine while both offline
+  // would then converge on the older edit, and every device would agree on the
+  // wrong answer, which is the most convincing kind of wrong.
+  // ------------------------------------------------------------------
+  out.push(`-- ${'-'.repeat(74)}`);
+  out.push('-- Stale-write guard');
+  out.push(`-- ${'-'.repeat(74)}`);
+  out.push('CREATE OR REPLACE FUNCTION public.reject_stale_update()');
+  out.push('RETURNS trigger LANGUAGE plpgsql AS $$');
+  out.push('BEGIN');
+  out.push('  -- A push is an unconditional upsert, so the newest EDIT must win here');
+  out.push('  -- rather than the newest UPLOAD. Returning OLD silently keeps the row.');
+  out.push('  IF NEW.updated_at < OLD.updated_at THEN');
+  out.push('    RETURN OLD;');
+  out.push('  END IF;');
+  out.push('  RETURN NEW;');
+  out.push('END; $$;');
+  out.push('');
+  for (const table of PUSH_ORDER) {
+    if (table === 'stock_movements') {
+      out.push('-- stock_movements is skipped: it has no UPDATE policy at all, so an');
+      out.push('-- update cannot reach a trigger in the first place.');
+      out.push('');
+      continue;
+    }
+    out.push(`DROP TRIGGER IF EXISTS trg_${table}_stale ON public.${table};`);
+    out.push(`CREATE TRIGGER trg_${table}_stale BEFORE UPDATE ON public.${table}`);
+    out.push('  FOR EACH ROW EXECUTE FUNCTION public.reject_stale_update();');
+    out.push('');
+  }
+
+  out.push('-- Pull reads by the SERVER clock, so this index is what makes it cheap.');
+  for (const table of PUSH_ORDER) {
+    out.push(`CREATE INDEX IF NOT EXISTS ix_${table}_synced ON public.${table} (owner, synced_at);`);
+  }
+  out.push('');
+
+  // --------------------------------------------------------------------
+  // Derived reads, mirroring m001_initial.ts.
+  //
+  // They live on the server so the web dashboard SELECTs them instead of
+  // reimplementing ledger arithmetic in JavaScript. Two implementations of
+  // "what is on hand" would drift, which is the exact class of bug this
+  // project has spent its effort making impossible.
+  // --------------------------------------------------------------------
+  out.push(`-- ${'-'.repeat(74)}`);
+  out.push('-- Derived reads - MUST mirror the views in m001_initial.ts');
+  out.push(`-- ${'-'.repeat(74)}`);
+  out.push('');
+  out.push('-- Excludes reversals AND the originals they reversed. Use for ACTIVITY');
+  out.push('-- counts ("doses given today"). Do NOT use for balances.');
+  out.push('-- security_invoker is NOT optional. A Postgres view runs with its OWNER\'s');
+  out.push('-- rights by default and therefore IGNORES row-level security, which would');
+  out.push('-- expose every clinic to every signed-in user. This makes the view run as');
+  out.push('-- the caller, so the policies on the underlying tables still apply.');
+  out.push('CREATE OR REPLACE VIEW public.v_movement_effective');
+  out.push('  WITH (security_invoker = true) AS');
+  out.push('SELECT m.* FROM public.stock_movements m');
+  out.push("WHERE m.movement_type <> 'REVERSAL'");
+  out.push('  AND NOT EXISTS (');
+  out.push('    SELECT 1 FROM public.stock_movements r WHERE r.reverses_id = m.id');
+  out.push('  );');
+  out.push('');
+  out.push('-- Balances sum the RAW table on purpose: reversals cancel arithmetically,');
+  out.push('-- which is the whole reason reversing entries are the right design.');
+  out.push('CREATE OR REPLACE VIEW public.v_stock_on_hand');
+  out.push('  WITH (security_invoker = true) AS');
+  out.push('SELECT');
+  out.push('  v.owner                          AS owner,');
+  out.push('  v.id                             AS vaccine_id,');
+  out.push('  v.name                           AS name,');
+  out.push('  v.generic_name                   AS generic_name,');
+  out.push('  v.unit_mode                      AS unit_mode,');
+  out.push('  v.doses_per_vial                 AS doses_per_vial,');
+  out.push('  v.min_balance_doses              AS min_balance_doses,');
+  out.push('  v.is_active                      AS is_active,');
+  out.push('  COALESCE(SUM(m.delta_doses), 0)  AS on_hand_doses');
+  out.push('FROM public.vaccines v');
+  out.push('LEFT JOIN public.stock_movements m');
+  out.push('       ON m.vaccine_id = v.id');
+  out.push('      AND m.owner = v.owner');
+  out.push("      AND m.stock_source = 'CLINIC_STOCK'");
+  out.push('WHERE v.deleted_at IS NULL');
+  out.push('GROUP BY v.owner, v.id;');
+  out.push('');
+  out.push('-- Per-device freshness. The dashboard leads with THIS, before any stock');
+  out.push('-- number: a count read at home while a device has not synced for three');
+  out.push('-- hours is wrong and looks authoritative.');
+  out.push('CREATE OR REPLACE VIEW public.v_device_activity');
+  out.push('  WITH (security_invoker = true) AS');
+  out.push('SELECT');
+  out.push('  owner                    AS owner,');
+  out.push('  device_id                AS device_id,');
+  out.push('  COUNT(*)                 AS entries,');
+  out.push('  MAX(recorded_at)         AS last_entry_at,');
+  out.push('  MAX(synced_at)           AS last_synced_at');
+  out.push('FROM public.stock_movements');
+  out.push('GROUP BY owner, device_id;');
+  out.push('');
+  out.push('GRANT SELECT ON public.v_movement_effective TO authenticated;');
+  out.push('GRANT SELECT ON public.v_stock_on_hand      TO authenticated;');
+  out.push('GRANT SELECT ON public.v_device_activity    TO authenticated;');
+  out.push('');
   out.push(`-- ${'-'.repeat(74)}`);
   out.push('-- Sanity: this must list exactly the replicated tables.');
   out.push(`-- expected: ${[...SYNC_TABLES].sort().join(', ')}`);

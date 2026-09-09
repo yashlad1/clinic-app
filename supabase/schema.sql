@@ -187,6 +187,131 @@ CREATE POLICY stock_movements_insert ON public.stock_movements
 -- missing policy is a denial. This is the server's half of invariant 1.
 
 -- --------------------------------------------------------------------------
+-- Uniqueness
+-- --------------------------------------------------------------------------
+-- One intent, one row. `idempotency_key` is deviceId:clientActionId, so
+-- this is stable across devices and across retries.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_movements_idempotency
+  ON public.stock_movements (idempotency_key);
+
+-- A movement may be reversed AT MOST ONCE. This is what stops stock being
+-- credited twice when two offline devices both correct the same entry.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_movements_reverses
+  ON public.stock_movements (reverses_id) WHERE reverses_id IS NOT NULL;
+
+-- Lot identity is deliberately NOT unique here, matching migration 003:
+-- two devices may both log a delivery from the same batch, and rejecting a
+-- real delivery to protect an index is the wrong way round. Totals stay
+-- correct because stock sums movements, not lots.
+CREATE INDEX IF NOT EXISTS ix_lots_identity
+  ON public.lots (vaccine_id, lot_number, funding_source);
+
+-- Vaccine name is also NOT unique here, and that is a considered choice.
+-- Enforcing it would make a duplicate name reject the whole push batch, so
+-- one admin mistake would stop the ledger being backed up at all. The
+-- phone keeps its own UNIQUE index, and pull resolves a collision by
+-- importing the loser renamed and flagging it for merge.
+CREATE INDEX IF NOT EXISTS ix_vaccines_name ON public.vaccines (name);
+
+-- --------------------------------------------------------------------------
+-- Stale-write guard
+-- --------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.reject_stale_update()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  -- A push is an unconditional upsert, so the newest EDIT must win here
+  -- rather than the newest UPLOAD. Returning OLD silently keeps the row.
+  IF NEW.updated_at < OLD.updated_at THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
+END; $$;
+
+DROP TRIGGER IF EXISTS trg_vaccines_stale ON public.vaccines;
+CREATE TRIGGER trg_vaccines_stale BEFORE UPDATE ON public.vaccines
+  FOR EACH ROW EXECUTE FUNCTION public.reject_stale_update();
+
+DROP TRIGGER IF EXISTS trg_patients_stale ON public.patients;
+CREATE TRIGGER trg_patients_stale BEFORE UPDATE ON public.patients
+  FOR EACH ROW EXECUTE FUNCTION public.reject_stale_update();
+
+DROP TRIGGER IF EXISTS trg_staff_stale ON public.staff;
+CREATE TRIGGER trg_staff_stale BEFORE UPDATE ON public.staff
+  FOR EACH ROW EXECUTE FUNCTION public.reject_stale_update();
+
+DROP TRIGGER IF EXISTS trg_lots_stale ON public.lots;
+CREATE TRIGGER trg_lots_stale BEFORE UPDATE ON public.lots
+  FOR EACH ROW EXECUTE FUNCTION public.reject_stale_update();
+
+-- stock_movements is skipped: it has no UPDATE policy at all, so an
+-- update cannot reach a trigger in the first place.
+
+-- Pull reads by the SERVER clock, so this index is what makes it cheap.
+CREATE INDEX IF NOT EXISTS ix_vaccines_synced ON public.vaccines (owner, synced_at);
+CREATE INDEX IF NOT EXISTS ix_patients_synced ON public.patients (owner, synced_at);
+CREATE INDEX IF NOT EXISTS ix_staff_synced ON public.staff (owner, synced_at);
+CREATE INDEX IF NOT EXISTS ix_lots_synced ON public.lots (owner, synced_at);
+CREATE INDEX IF NOT EXISTS ix_stock_movements_synced ON public.stock_movements (owner, synced_at);
+
+-- --------------------------------------------------------------------------
+-- Derived reads - MUST mirror the views in m001_initial.ts
+-- --------------------------------------------------------------------------
+
+-- Excludes reversals AND the originals they reversed. Use for ACTIVITY
+-- counts ("doses given today"). Do NOT use for balances.
+-- security_invoker is NOT optional. A Postgres view runs with its OWNER's
+-- rights by default and therefore IGNORES row-level security, which would
+-- expose every clinic to every signed-in user. This makes the view run as
+-- the caller, so the policies on the underlying tables still apply.
+CREATE OR REPLACE VIEW public.v_movement_effective
+  WITH (security_invoker = true) AS
+SELECT m.* FROM public.stock_movements m
+WHERE m.movement_type <> 'REVERSAL'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.stock_movements r WHERE r.reverses_id = m.id
+  );
+
+-- Balances sum the RAW table on purpose: reversals cancel arithmetically,
+-- which is the whole reason reversing entries are the right design.
+CREATE OR REPLACE VIEW public.v_stock_on_hand
+  WITH (security_invoker = true) AS
+SELECT
+  v.owner                          AS owner,
+  v.id                             AS vaccine_id,
+  v.name                           AS name,
+  v.generic_name                   AS generic_name,
+  v.unit_mode                      AS unit_mode,
+  v.doses_per_vial                 AS doses_per_vial,
+  v.min_balance_doses              AS min_balance_doses,
+  v.is_active                      AS is_active,
+  COALESCE(SUM(m.delta_doses), 0)  AS on_hand_doses
+FROM public.vaccines v
+LEFT JOIN public.stock_movements m
+       ON m.vaccine_id = v.id
+      AND m.owner = v.owner
+      AND m.stock_source = 'CLINIC_STOCK'
+WHERE v.deleted_at IS NULL
+GROUP BY v.owner, v.id;
+
+-- Per-device freshness. The dashboard leads with THIS, before any stock
+-- number: a count read at home while a device has not synced for three
+-- hours is wrong and looks authoritative.
+CREATE OR REPLACE VIEW public.v_device_activity
+  WITH (security_invoker = true) AS
+SELECT
+  owner                    AS owner,
+  device_id                AS device_id,
+  COUNT(*)                 AS entries,
+  MAX(recorded_at)         AS last_entry_at,
+  MAX(synced_at)           AS last_synced_at
+FROM public.stock_movements
+GROUP BY owner, device_id;
+
+GRANT SELECT ON public.v_movement_effective TO authenticated;
+GRANT SELECT ON public.v_stock_on_hand      TO authenticated;
+GRANT SELECT ON public.v_device_activity    TO authenticated;
+
+-- --------------------------------------------------------------------------
 -- Sanity: this must list exactly the replicated tables.
 -- expected: lots, patients, staff, stock_movements, vaccines
 -- --------------------------------------------------------------------------

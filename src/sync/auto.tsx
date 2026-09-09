@@ -3,6 +3,8 @@ import { AppState } from 'react-native';
 import { useDb } from '../db/provider';
 import { backendFor } from './config';
 import { pushOnce } from './push';
+import { pullOnce } from './pull';
+import { adoptOrSeed } from './adopt';
 
 /**
  * Background replication.
@@ -35,8 +37,21 @@ export function useSyncEngine() {
     try {
       const backend = await backendFor(db);
       if (!backend) return null; // not configured; that is a normal state
-      const out = await pushOnce(db, backend, deviceId);
-      return { ok: out.ok, error: out.error };
+
+      // A device that could not reach the server on first launch is still
+      // waiting for a catalog. Settle that before anything else, so it never
+      // ends up seeding a duplicate one.
+      await adoptOrSeed(db, deviceId, backend).catch(() => undefined);
+
+      // PULL BEFORE PUSH, always. A device must learn what already exists
+      // before offering its own version of it - pushing first is how two
+      // devices end up having both created the same batch or catalog row.
+      const pulled = await pullOnce(db, backend);
+      const pushed = await pushOnce(db, backend, deviceId);
+      return {
+        ok: pulled.ok && pushed.ok,
+        error: pushed.error ?? pulled.error,
+      };
     } catch (e) {
       // Swallowed on purpose - see rule 2. pushOnce already wrote it to
       // sync_log, which is what the More tab reads.

@@ -6,6 +6,7 @@ import { color, radius, space, type, weight } from '../../ui/tokens';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { useAction } from '../../ui/use-action';
+import { isPrimaryDevice } from '../../sync/adopt';
 import {
   activateVaccine, deactivateVaccine, listRemovedVaccines, listVaccines, removeVaccine,
   restoreVaccine, vaccineUsage,
@@ -35,6 +36,7 @@ export default function VaccinesScreen() {
 
   const { data: active, loading, error, reload } = useQuery((d) => listVaccines(d, false), []);
   const { data: removed } = useQuery((d) => listRemovedVaccines(d), []);
+  const { data: primary } = useQuery((d) => isPrimaryDevice(d), []);
 
   const rows = useMemo(() => {
     const list = showRemoved ? (removed ?? []) : (active ?? []);
@@ -204,12 +206,27 @@ export default function VaccinesScreen() {
       />
 
       <Footer floating>
-        <BigButton
-          accent="catalog"
-          label="ADD A NEW VACCINE"
-          sublabel="Trade name, how it is counted, safety limit"
-          onPress={() => router.push('/catalog/new')}
-        />
+        {primary === false ? (
+          // Only the device that started the clinic may add vaccines.
+          //
+          // Two devices adding the same trade name while offline produces two
+          // catalog rows for one vaccine, which is precisely the misspelling
+          // problem this app exists to eliminate - arriving through the sync
+          // layer instead of through handwriting. Adding a vaccine is an admin
+          // action performed a few times a year, so confining it to one device
+          // costs nothing and removes the hazard.
+          <T style={st.notPrimary}>
+            New vaccines are added on the main clinic phone, so the list stays the same everywhere.
+            Everything else works normally here.
+          </T>
+        ) : (
+          <BigButton
+            accent="catalog"
+            label="ADD A NEW VACCINE"
+            sublabel="Trade name, how it is counted, safety limit"
+            onPress={() => router.push('/catalog/new')}
+          />
+        )}
       </Footer>
     </View>
   );
@@ -245,5 +262,6 @@ const st = StyleSheet.create({
     borderRadius: radius.sm,
   },
   actionText: { fontSize: type.label, fontWeight: weight.semibold },
+  notPrimary: { fontSize: type.label, color: color.textMuted, lineHeight: 24, textAlign: 'center' },
 
 });

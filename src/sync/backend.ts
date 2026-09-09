@@ -25,6 +25,15 @@ export interface SyncBackend {
   push(batch: PushBatch): Promise<void>;
   /** Everything the server holds, for rebuilding a lost phone. */
   pullAll(table: SyncTable): Promise<Row[]>;
+  /**
+   * Rows the server has stamped since `since`, oldest first.
+   *
+   * `since` is the SERVER's clock (`synced_at`), never a device's. A device
+   * with a skewed clock writes a skewed `updated_at`, and a watermark built on
+   * that silently skips its rows forever - a sync that loses data while
+   * reporting success.
+   */
+  pullSince(table: SyncTable, since: string | null, limit: number): Promise<Row[]>;
   /** Cheap reachability + credential check for the Settings screen. */
   ping(): Promise<void>;
 }

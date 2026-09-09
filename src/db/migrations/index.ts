@@ -1,5 +1,6 @@
 import { m001 } from './m001_initial';
 import { m002 } from './m002_sync';
+import { m003 } from './m003_multidevice';
 
 /**
  * Ordered migration chain. Append new migrations; never edit a shipped one.
@@ -10,6 +11,6 @@ import { m002 } from './m002_sync';
  *   - Every migration gets a test that builds v(N-1) with seeded rows, runs the
  *     chain, and asserts every pre-existing row survived.
  */
-export const MIGRATIONS = [m001, m002];
+export const MIGRATIONS = [m001, m002, m003];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].to;

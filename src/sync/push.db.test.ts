@@ -90,6 +90,7 @@ describe('push', () => {
     const spy = {
       push: async (b: any) => void order.push(b.table),
       pullAll: async () => [],
+      pullSince: async () => [],
       ping: async () => {},
     };
     await pushOnce(db, spy, ctx.deviceId);

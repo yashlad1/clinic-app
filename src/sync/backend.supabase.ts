@@ -156,6 +156,24 @@ export function supabaseBackend(cfg: SupabaseConfig): SyncBackend & { signOut: (
       }
     },
 
+    async pullSince(table: SyncTable, since: string | null, limit: number) {
+      // Ordered and filtered by the SERVER's clock, so a device with a wrong
+      // clock cannot make its own rows invisible to everyone else.
+      const filter = since ? `&synced_at=gt.${encodeURIComponent(since)}` : '';
+      const res = await request(
+        `/rest/v1/${table}?select=*${filter}&order=synced_at.asc&limit=${limit}`,
+        { method: 'GET', headers: await headers() },
+      );
+      if (res.status === 401 || res.status === 403) {
+        throw new SyncAuthError(`The server rejected this account (${res.status}).`);
+      }
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`Download of ${table} failed (${res.status}): ${body.slice(0, 300)}`);
+      }
+      return (await res.json()) as Row[];
+    },
+
     async pullAll(table: SyncTable) {
       const PAGE = 1000;
       const all: Row[] = [];

@@ -6,9 +6,10 @@ import Constants from 'expo-constants';
 import type { Db } from './driver';
 import { openDeviceDb } from './driver.expo';
 import { DataNewerThanAppError, migrate } from './migrate';
-import { seedCatalog } from './repo/catalog';
 import { SETTING, ensureDeviceId, getSetting, setSetting } from './repo/settings';
 import { snapshotDb } from './backup/export';
+import { adoptOrSeed } from '../sync/adopt';
+import { backendFor } from '../sync/config';
 import { todayLocal } from '../domain/time';
 
 interface DbContextValue {
@@ -69,12 +70,17 @@ export function DbProvider({
 
         const deviceId = await ensureDeviceId(db);
 
-        // Seed the catalog once, so the clinic is productive on first launch
-        // and never has to type a vaccine name.
-        if (!(await getSetting(db, SETTING.catalogSeeded))) {
-          await seedCatalog(db, deviceId);
-          await setSetting(db, SETTING.catalogSeeded, '1');
-        }
+        // Join the clinic, or start it. Never both.
+        //
+        // This deliberately replaces a plain seedCatalog() call: on a second
+        // device that would have created a SECOND copy of the catalog with new
+        // UUIDs and pushed it, leaving two rows per vaccine on the server -
+        // failure mode 1, recreated by the sync layer. adoptOrSeed pulls first,
+        // and when the server is unreachable it waits rather than guessing.
+        await (async () => {
+          const backend = await backendFor(db).catch(() => null);
+          await adoptOrSeed(db, deviceId, backend);
+        })().catch(() => undefined);
 
         // One silent .db snapshot per day. Survives a crash or DB corruption;
         // does NOT survive a lost phone, which is why it supplements rather
