@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main, hardening]
+  pull_request:
+  workflow_dispatch:
+
+# A second push should cancel the first: nothing here depends on a stale run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: typecheck, tests, bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Node 24+ ships `node:sqlite`, which the entire `db` test project
+          # runs against via driver.node.ts. On an older Node every ledger test
+          # fails to import rather than fails to pass, so this pin is load-bearing.
+          node-version: '24.x'
+          cache: npm
+
+      # `npm ci --include=dev` is EAS Build's exact command. Using the same one
+      # here means a lockfile problem surfaces in 30 seconds instead of 16
+      # seconds into a cloud build, which is how a release was lost once.
+      - name: Install
+        run: npm ci --include=dev
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Tests
+        run: npm test -- --ci
+
+      # The thing unit tests cannot catch: a module that type-checks but does
+      # not resolve under Metro. Exporting the bundle is the cheapest proxy for
+      # "would this actually boot on the phone".
+      - name: Android bundle resolves
+        run: npx expo export --platform android --output-dir /tmp/export
+        env:
+          EXPO_NO_TELEMETRY: '1'

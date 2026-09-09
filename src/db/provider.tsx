@@ -1,7 +1,8 @@
 import React, {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from 'react';
-import * as SQLite from 'expo-sqlite';
+// Type-only, so it is erased at compile time and does not breach invariant 6.
+import type { SQLiteDatabase } from 'expo-sqlite';
 import Constants from 'expo-constants';
 import type { Db } from './driver';
 import { openDeviceDb } from './driver.expo';
@@ -14,7 +15,7 @@ import { todayLocal } from '../domain/time';
 
 interface DbContextValue {
   db: Db;
-  raw: SQLite.SQLiteDatabase;
+  raw: SQLiteDatabase;
   deviceId: string;
   appVersion: string;
   /** Increments after every write; queries re-run when it changes. */

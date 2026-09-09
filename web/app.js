@@ -108,6 +108,25 @@ const WORD = { LOW: 'LOW', OUT: 'OUT', NEGATIVE: 'CHECK', OK: '' };
 /** Two hours of silence during clinic hours is worth saying out loud. */
 const STALE_MS = 2 * 60 * 60 * 1000;
 
+/**
+ * A fingerprint of everything on screen, so Refresh can answer the only
+ * question a click actually asks: did anything change?
+ *
+ * Built from the fields that move when real work happens - each device's entry
+ * count and last upload, and every vaccine's balance. Deliberately NOT the
+ * whole payload: `synced_at` on an unrelated row would make every check look
+ * like news, which is the same as telling her nothing.
+ */
+function signature(stock, devices, entries) {
+  return JSON.stringify([
+    devices.map((d) => [d.device_id, d.entries, d.last_synced_at]).sort(),
+    stock.map((s) => [s.vaccine_id, s.on_hand_doses]).sort(),
+    entries.length,
+  ]);
+}
+
+let lastSignature = null;
+
 function renderDevices(devices) {
   if (!devices.length) {
     $('devices').innerHTML = '<p class="meta">No entries recorded yet.</p>';
@@ -225,6 +244,23 @@ async function load() {
   $('asOf').textContent = `Stock as of ${clockTime()} today`;
   $('footNote').textContent =
     'This page only reads. Doses and deliveries are recorded in the app on the clinic phone.';
+
+  // Whether anything moved since the previous check, and when that check was.
+  // `firstLoad` matters: on the very first load there is nothing to compare
+  // against, and claiming "nothing new" then would be a guess dressed up as a
+  // fact.
+  const sig = signature(stock, devices, entries);
+  const firstLoad = lastSignature === null;
+  const changed = !firstLoad && sig !== lastSignature;
+  lastSignature = sig;
+
+  $('checked').textContent = firstLoad
+    ? `Checked ${clockTime()}`
+    : changed
+      ? `Checked ${clockTime()} — new entries loaded`
+      : `Checked ${clockTime()} — nothing new since the last check`;
+
+  return { changed, firstLoad };
 }
 
 /* ------------------------------------------------------------------ boot */
@@ -239,15 +275,22 @@ function showLogin(msg) {
 async function showDash() {
   $('login').classList.add('hide');
   $('dash').classList.remove('hide');
+  $('loadError').classList.add('hide');
   try {
-    await load();
+    return await load();
   } catch (e) {
     if (String(e.message).includes('signed out') || String(e.message).includes('not signed in')) {
       clearSession();
       showLogin('Please sign in again.');
     } else {
-      $('asOf').textContent = e.message;
+      // In the red banner above the figures, not in the subtitle. A page that
+      // failed to load must not look like a page that loaded.
+      $('loadError').textContent = e.message;
+      $('loadError').classList.remove('hide');
+      // Never leave a stale "Checked 3:04pm" implying this read succeeded.
+      $('checked').textContent = `Could not check — last shown figures are from earlier`;
     }
+    return null;
   }
 }
 
@@ -272,7 +315,38 @@ $('signin').addEventListener('click', async () => {
 });
 
 $('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('signin').click(); });
-$('refresh').addEventListener('click', () => void showDash());
+
+/**
+ * Refresh has to SAY it did something.
+ *
+ * It always worked, but it re-rendered the same figures into the same DOM and
+ * changed nothing on screen - and `asOf` is minute-resolution, so two clicks in
+ * one minute produced byte-identical output. A button with no feedback is
+ * indistinguishable from a broken button, and it got reported as broken.
+ *
+ * So: disabled with a label change while in flight, then a brief confirmation.
+ * Same pattern the Sign in button already used.
+ */
+$('refresh').addEventListener('click', async () => {
+  const btn = $('refresh');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = 'Refreshing…';
+  let result = null;
+  try {
+    result = await showDash();
+  } finally {
+    // The label answers the click; the line above it keeps the answer around
+    // after the label reverts.
+    btn.textContent = !result
+      ? 'Refresh'
+      : result.changed
+        ? 'Updated'
+        : 'No changes';
+    btn.disabled = false;
+    if (result) setTimeout(() => { btn.textContent = 'Refresh'; }, 1800);
+  }
+});
 $('signout').addEventListener('click', () => { clearSession(); showLogin(); });
 
 // Coming back to the page is the moment the numbers matter, so re-read then.

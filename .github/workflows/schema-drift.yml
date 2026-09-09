@@ -1,0 +1,60 @@
+name: Schema drift
+
+on:
+  push:
+    branches: [main, hardening]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: generated schemas match the migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: npm
+      - run: npm ci --include=dev
+
+      # Why this job exists, separately from the tests.
+      #
+      # supabase/schema.sql is GENERATED from the SQLite schema. PostgREST
+      # rejects an unknown column with a 400, so a migration that adds a column
+      # without regenerating this file silently breaks every push of that table -
+      # and it breaks it on the phone, in a clinic, where nobody is reading logs.
+      #
+      # The failure is invisible in every other check: types pass, tests pass,
+      # the app runs. Only a diff catches it.
+      # `node` DIRECTLY, never a new npm script.
+      #
+      # `packageJson:scripts` is an EAS fingerprint source, so adding an npm
+      # alias rotates the OTA runtimeVersion and cuts every installed phone off
+      # from updates until a new APK is sideloaded. Adding `supabase:schema`
+      # here did exactly that - fa84bf12 -> db41047e - which is the third time
+      # this project has been caught by it. scripts/deploy-web.sh carries the
+      # same warning for the same reason.
+      #
+      # `-s` on the existing schema:dump matters too: without it npm writes its
+      # own banner to STDOUT, which lands inside the generated .sql and would
+      # fail the diff on every run regardless of the schema.
+      - name: Regenerate
+        env:
+          NODE_OPTIONS: --disable-warning=ExperimentalWarning
+        run: |
+          npm run -s schema:dump
+          node scripts/supabase-schema.ts > supabase/schema.sql
+
+      - name: Fail if the committed files are stale
+        run: |
+          if ! git diff --quiet -- docs/schema.sql supabase/schema.sql; then
+            echo "::error::Generated schema is out of date. Run 'npm run schema:dump' and 'node scripts/supabase-schema.ts > supabase/schema.sql', then commit."
+            git --no-pager diff -- docs/schema.sql supabase/schema.sql
+            exit 1
+          fi
+          echo "Generated schemas are current."
