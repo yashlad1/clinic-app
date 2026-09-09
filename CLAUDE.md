@@ -48,8 +48,15 @@ Violating any of these is a bug, however convenient the shortcut looks.
 5. **Recording a dose must never be blocked** by a missing child name, a low-stock warning, or a
    confirmation dialog. An unnamed dose is enormously better than an unlogged dose; an app that
    refuses to record a vaccination to protect its own inventory numbers gets abandoned, correctly.
-6. **Nothing outside `src/db/driver.*.ts` may import `expo-sqlite`.** This is what keeps the whole
-   data layer testable in plain Node.
+6. **Nothing outside `src/db/driver.*.ts` may import `expo-sqlite` at runtime.** This is what keeps
+   the whole data layer testable in plain Node.
+   **Two documented exceptions**, enforced as an exact allowlist by
+   `src/ui/audit/invariants.db.test.ts`: `db/backup/export.ts` and `db/backup/import.ts` need
+   `serializeAsync` / `deserializeDatabaseAsync` / `backupDatabaseAsync`, which have no `Db`
+   equivalent and which section 10 *requires*. The invariant's purpose survives because the logic is
+   already extracted into `csv.ts`, `validate.ts` and `collect.ts`, all Node-tested; what remains in
+   those two files is a thin platform shim. `import type` is fine anywhere — it is erased at compile
+   time.
 7. **Migrations are forward-only and additive.** Never `DROP TABLE`, `DROP COLUMN`, or `DELETE` in a
    migration. To retire a column, stop reading it.
 8. **Negative on-hand is surfaced loudly, never clamped to zero.** A negative balance means a receipt
@@ -346,8 +353,11 @@ These are requirements, not preferences.
 - **No icon-only controls** outside the tab bar. Every button gets a word — icons are ambiguous to
   someone coming from paper.
 - Type scale: numbers that matter **28–34pt bold**, tile titles **22pt semibold**, body **18pt**,
-  labels 16pt, **floor 14pt**. Body `#0F172A` on `#FFFFFF` (~17:1). No grey below `#55606E`
-  (~6.2:1), no thin weights.
+  labels 16pt, **floor 14pt**. Body `#0F172A` on `#FFFFFF` (**17.9:1 measured**). No grey below
+  `#55606E` (**6.4:1 measured**), no thin weights.
+  These are no longer hand-written guesses — `src/ui/audit/contrast.db.test.ts` computes every
+  pairing and fails below 4.5:1. **Two pairings sit at exactly 4.5:1** (`low` on `lowSoft`, `ok` on
+  `okSoft`), so darkening either soft tint breaks compliance; change those only with the test open.
 - Semantic colours, all ≥4.5:1 on white: green `#15803D` ok, amber `#B45309` low, red `#B91C1C`
   out/expired. **Never encode state by colour alone** — always colour **plus a word** ("LOW",
   "OUT", "CHECK"). ~8% of men are red-green colourblind and a bright clinic window destroys colour
