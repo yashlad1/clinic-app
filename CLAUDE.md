@@ -460,12 +460,24 @@ unchanged: recording a dose must never be blocked. Sync is a background push tha
 user — it never blocks, never opens a dialog, and never reports its own failures as errors, because
 a failed sync is not a failed dose. Status lives quietly on More.
 
-It runs on three triggers: **4s after any write**, **on return to the foreground**, and a
-**15-minute heartbeat** while the app is open. The heartbeat exists for the case the other two miss —
+It runs on four triggers: **4s after any write**, **on return to the foreground**, **on going to
+the background** (best-effort — it shrinks the window where the day's last doses sit on the phone
+until someone next opens the app, which is exactly when she is at home wondering why the evening is
+missing), and a **15-minute heartbeat** while the app is open. The heartbeat exists for the case the other two miss —
 the app left open on a clinic counter while entries go in on the *other* device — where the screen
 would otherwise drift out of date while looking authoritative. It only fires in the foreground; an
 Android background timer is not a guarantee worth pretending to have. `syncNow` refuses to run
 concurrently with itself, so overlapping triggers are no-ops rather than duplicate uploads.
+
+**Nobody has to find a button.** Uploading is automatic; the failure worth designing for was the
+*silent* one — sync quietly broken for hours while the only indication sat on the More tab, which
+nobody opens mid-clinic. So `SyncBanner` on the dose screen says so unprompted, driven by
+`domain/sync-nag.ts`.
+
+It is **deliberately silent in ordinary use**: nothing below 30 minutes behind and 20 pending, because
+an indicator that appears for four seconds after every dose is noise, and noise is how a real warning
+gets trained into invisibility. At four hours it escalates to red. Every message states that the data
+is **still safe on this phone**, because this is a delivery delay and must never read as data loss.
 
 **More** also carries an explicit `UPLOAD NOW`, one tap deep. It is not needed for correctness, but
 "did it actually go?" is a fair thing to want settled before leaving the clinic, and it pulls before

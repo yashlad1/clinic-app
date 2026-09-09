@@ -8,6 +8,7 @@ import { dosesGivenTotals, vaccinesByUsage } from '../../domain/reports';
 import { describeStockRow } from '../../domain/stock';
 import { daysAgoLocal, formatDayLabel, todayLocal } from '../../domain/time';
 import { BackupBanner } from '../../ui/backup-banner';
+import { SyncBanner } from '../../ui/sync-banner';
 import { useColumns } from '../../ui/layout';
 import { isAwaitingCatalog, startNewClinicHere } from '../../sync/adopt';
 import { useAction } from '../../ui/use-action';
@@ -107,6 +108,7 @@ export default function GiveDoseScreen() {
 
       <View style={st.pad}>
         <BackupBanner />
+        <SyncBanner />
         {/* Not autofocused: the keyboard must not cover the grid on arrival. */}
         <Input
           placeholder="Search vaccine"

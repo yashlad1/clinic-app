@@ -90,7 +90,15 @@ export function useSyncEngine() {
   // back, and the cheapest place to drain a queue built up offline.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
+      // Coming back: the most likely moment for signal to have returned, and
+      // the cheapest place to drain a queue built up offline.
       if (s === 'active') void syncNow();
+      // Going away: best-effort, and it shrinks the window that actually
+      // matters. Without it, the last doses of the day sit on the phone until
+      // someone next opens the app - which is exactly when she is at home
+      // looking at the dashboard and wondering why the evening is missing.
+      // Android may kill us mid-request; the entries stay queued if so.
+      if (s === 'background' || s === 'inactive') void syncNow();
     });
     return () => sub.remove();
   }, [syncNow]);
