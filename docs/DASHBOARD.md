@@ -44,18 +44,26 @@ page asks for that and the browser remembers the session.
 every table and view, so the key alone returns 401 for everything — but the repo is public, and
 CLAUDE.md section 13 forbids committing anything that identifies the clinic.
 
-### 2. Put the `web/` folder on any static host
+### 2. Deploy it
 
-Cloudflare Pages, Netlify, Vercel, or anything else. It is plain HTML and JavaScript with no build
-step. With Netlify Drop you can literally drag the folder onto the page.
+**Live at https://clinic-stock.expo.app**
 
 ```sh
-npx --yes wrangler pages deploy web --project-name clinic-stock
+npx --yes eas-cli@23.2.0 deploy --export-dir web --prod --non-interactive --dev-domain clinic-stock
 ```
+
+EAS Hosting, on the Expo account this project already uses — so there is **no new account to
+create**. Cloudflare Pages, Netlify and Vercel all work too (it is plain HTML and JavaScript with no
+build step), but Cloudflare needs a fresh email-and-password signup, and one fewer credential to
+look after is worth more here than any difference between the hosts.
+
+Re-run that same command after any change to `web/`. It is not covered by `eas update`, which ships
+the phone app; this is a separate deployment.
 
 ### 3. Add it to the home screen
 
-On the iPhone, open the URL in **Safari** → **Share** → **Add to Home Screen**.
+On the iPhone, open **https://clinic-stock.expo.app** in **Safari** → **Share** → **Add to Home
+Screen**.
 
 Safari specifically: Chrome on iOS cannot add a web app to the home screen.
 
