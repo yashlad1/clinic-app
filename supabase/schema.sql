@@ -312,6 +312,34 @@ GRANT SELECT ON public.v_stock_on_hand      TO authenticated;
 GRANT SELECT ON public.v_device_activity    TO authenticated;
 
 -- --------------------------------------------------------------------------
+-- Lock out the anonymous role entirely
+-- --------------------------------------------------------------------------
+-- Defence in depth, and it also makes this verifiable. Row-level security
+-- already returns nothing to `anon` because every policy is TO authenticated,
+-- but on an empty table "RLS is working" and "RLS is bypassed" look
+-- identical from outside - both answer 200 with an empty list. Revoking the
+-- grant makes `anon` answer 401 instead, so a single unauthenticated request
+-- proves the clinic data is unreachable without a login.
+--
+-- Safe for the app: it sends the publishable key as `apikey` but also a user
+-- JWT as `Authorization`, so it acts as `authenticated`, never as `anon`.
+REVOKE ALL ON public.vaccines FROM anon;
+REVOKE ALL ON public.patients FROM anon;
+REVOKE ALL ON public.staff FROM anon;
+REVOKE ALL ON public.lots FROM anon;
+REVOKE ALL ON public.stock_movements FROM anon;
+REVOKE ALL ON public.v_movement_effective FROM anon;
+REVOKE ALL ON public.v_stock_on_hand      FROM anon;
+REVOKE ALL ON public.v_device_activity    FROM anon;
+
+-- Verify security_invoker really took effect. Every row must show
+-- security_invoker=true; a NULL means the view runs as its OWNER and
+-- ignores row-level security, which would expose every clinic.
+--   SELECT c.relname, c.reloptions
+--     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+--    WHERE n.nspname = 'public' AND c.relkind = 'v';
+
+-- --------------------------------------------------------------------------
 -- Sanity: this must list exactly the replicated tables.
 -- expected: lots, patients, staff, stock_movements, vaccines
 -- --------------------------------------------------------------------------

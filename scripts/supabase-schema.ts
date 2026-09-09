@@ -240,6 +240,32 @@ const main = async () => {
   out.push('GRANT SELECT ON public.v_device_activity    TO authenticated;');
   out.push('');
   out.push(`-- ${'-'.repeat(74)}`);
+  out.push('-- Lock out the anonymous role entirely');
+  out.push(`-- ${'-'.repeat(74)}`);
+  out.push('-- Defence in depth, and it also makes this verifiable. Row-level security');
+  out.push('-- already returns nothing to `anon` because every policy is TO authenticated,');
+  out.push('-- but on an empty table "RLS is working" and "RLS is bypassed" look');
+  out.push('-- identical from outside - both answer 200 with an empty list. Revoking the');
+  out.push('-- grant makes `anon` answer 401 instead, so a single unauthenticated request');
+  out.push('-- proves the clinic data is unreachable without a login.');
+  out.push('--');
+  out.push('-- Safe for the app: it sends the publishable key as `apikey` but also a user');
+  out.push('-- JWT as `Authorization`, so it acts as `authenticated`, never as `anon`.');
+  for (const table of PUSH_ORDER) {
+    out.push(`REVOKE ALL ON public.${table} FROM anon;`);
+  }
+  out.push('REVOKE ALL ON public.v_movement_effective FROM anon;');
+  out.push('REVOKE ALL ON public.v_stock_on_hand      FROM anon;');
+  out.push('REVOKE ALL ON public.v_device_activity    FROM anon;');
+  out.push('');
+  out.push('-- Verify security_invoker really took effect. Every row must show');
+  out.push('-- security_invoker=true; a NULL means the view runs as its OWNER and');
+  out.push('-- ignores row-level security, which would expose every clinic.');
+  out.push('--   SELECT c.relname, c.reloptions');
+  out.push("--     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace");
+  out.push("--    WHERE n.nspname = 'public' AND c.relkind = 'v';");
+  out.push('');
+  out.push(`-- ${'-'.repeat(74)}`);
   out.push('-- Sanity: this must list exactly the replicated tables.');
   out.push(`-- expected: ${[...SYNC_TABLES].sort().join(', ')}`);
   out.push(`-- ${'-'.repeat(74)}`);
