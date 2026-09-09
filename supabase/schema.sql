@@ -263,7 +263,15 @@ CREATE INDEX IF NOT EXISTS ix_stock_movements_synced ON public.stock_movements (
 -- rights by default and therefore IGNORES row-level security, which would
 -- expose every clinic to every signed-in user. This makes the view run as
 -- the caller, so the policies on the underlying tables still apply.
-CREATE OR REPLACE VIEW public.v_movement_effective
+-- DROP before CREATE, not CREATE OR REPLACE.
+--
+-- CREATE OR REPLACE VIEW refuses a changed column list, and the Supabase
+-- SQL Editor runs this file as one transaction - so one refusal rolls back
+-- everything and the view silently stays on its old definition. That is
+-- exactly what happened when `level` was added. Nothing depends on these
+-- views, so dropping them first is free and always works.
+DROP VIEW IF EXISTS public.v_movement_effective;
+CREATE VIEW public.v_movement_effective
   WITH (security_invoker = true) AS
 SELECT m.* FROM public.stock_movements m
 WHERE m.movement_type <> 'REVERSAL'
@@ -273,7 +281,8 @@ WHERE m.movement_type <> 'REVERSAL'
 
 -- Balances sum the RAW table on purpose: reversals cancel arithmetically,
 -- which is the whole reason reversing entries are the right design.
-CREATE OR REPLACE VIEW public.v_stock_on_hand
+DROP VIEW IF EXISTS public.v_stock_on_hand;
+CREATE VIEW public.v_stock_on_hand
   WITH (security_invoker = true) AS
 SELECT
   v.owner                          AS owner,
@@ -310,7 +319,8 @@ GROUP BY v.owner, v.id;
 -- Per-device freshness. The dashboard leads with THIS, before any stock
 -- number: a count read at home while a device has not synced for three
 -- hours is wrong and looks authoritative.
-CREATE OR REPLACE VIEW public.v_device_activity
+DROP VIEW IF EXISTS public.v_device_activity;
+CREATE VIEW public.v_device_activity
   WITH (security_invoker = true) AS
 SELECT
   owner                    AS owner,

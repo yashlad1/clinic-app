@@ -191,7 +191,15 @@ const main = async () => {
   out.push('-- rights by default and therefore IGNORES row-level security, which would');
   out.push('-- expose every clinic to every signed-in user. This makes the view run as');
   out.push('-- the caller, so the policies on the underlying tables still apply.');
-  out.push('CREATE OR REPLACE VIEW public.v_movement_effective');
+  out.push('-- DROP before CREATE, not CREATE OR REPLACE.');
+  out.push('--');
+  out.push('-- CREATE OR REPLACE VIEW refuses a changed column list, and the Supabase');
+  out.push('-- SQL Editor runs this file as one transaction - so one refusal rolls back');
+  out.push('-- everything and the view silently stays on its old definition. That is');
+  out.push('-- exactly what happened when `level` was added. Nothing depends on these');
+  out.push('-- views, so dropping them first is free and always works.');
+  out.push('DROP VIEW IF EXISTS public.v_movement_effective;');
+  out.push('CREATE VIEW public.v_movement_effective');
   out.push('  WITH (security_invoker = true) AS');
   out.push('SELECT m.* FROM public.stock_movements m');
   out.push("WHERE m.movement_type <> 'REVERSAL'");
@@ -201,7 +209,8 @@ const main = async () => {
   out.push('');
   out.push('-- Balances sum the RAW table on purpose: reversals cancel arithmetically,');
   out.push('-- which is the whole reason reversing entries are the right design.');
-  out.push('CREATE OR REPLACE VIEW public.v_stock_on_hand');
+  out.push('DROP VIEW IF EXISTS public.v_stock_on_hand;');
+  out.push('CREATE VIEW public.v_stock_on_hand');
   out.push('  WITH (security_invoker = true) AS');
   out.push('SELECT');
   out.push('  v.owner                          AS owner,');
@@ -238,7 +247,8 @@ const main = async () => {
   out.push('-- Per-device freshness. The dashboard leads with THIS, before any stock');
   out.push('-- number: a count read at home while a device has not synced for three');
   out.push('-- hours is wrong and looks authoritative.');
-  out.push('CREATE OR REPLACE VIEW public.v_device_activity');
+  out.push('DROP VIEW IF EXISTS public.v_device_activity;');
+  out.push('CREATE VIEW public.v_device_activity');
   out.push('  WITH (security_invoker = true) AS');
   out.push('SELECT');
   out.push('  owner                    AS owner,');
