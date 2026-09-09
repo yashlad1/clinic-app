@@ -53,14 +53,12 @@
     "test:watch": "NODE_OPTIONS=--disable-warning=ExperimentalWarning jest --watch",
     "typecheck": "tsc --noEmit",
     "schema:dump": "NODE_OPTIONS=--disable-warning=ExperimentalWarning node scripts/dump-schema.ts > docs/schema.sql",
-    "supabase:schema": "NODE_OPTIONS=--disable-warning=ExperimentalWarning node scripts/supabase-schema.ts",
     "backlog:jira": "NODE_OPTIONS=--disable-warning=ExperimentalWarning node scripts/backlog-jira.ts > jira/backlog.csv",
     "eas:setup": "npx --yes eas-cli@23.2.0 init && npx --yes eas-cli@23.2.0 update:configure",
     "build:apk": "npx --yes eas-cli@23.2.0 build --platform android --profile production",
     "build:preview": "npx --yes eas-cli@23.2.0 build --platform android --profile preview",
     "ota": "npx --yes eas-cli@23.2.0 update --branch production --message",
-    "keystore": "npx --yes eas-cli@23.2.0 credentials",
-    "supabase:schema:write": "npm run -s supabase:schema > supabase/schema.sql"
+    "keystore": "npx --yes eas-cli@23.2.0 credentials"
   },
   "private": true
 }

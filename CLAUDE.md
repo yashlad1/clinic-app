@@ -528,10 +528,19 @@ is a standing invitation to probe it.
 
 ### The server schema is generated, not hand-written
 
-`npm run supabase:schema > supabase/schema.sql` derives the Postgres DDL from the live SQLite schema
+`node scripts/supabase-schema.ts > supabase/schema.sql` derives the Postgres DDL from the live SQLite schema
 via `PRAGMA table_info`. Hand-typing it is the obvious approach and the wrong one: PostgREST rejects
 an unknown column with a 400, so one missed column silently breaks every push of that table. Re-run
 it after any future migration.
+
+**Invoke it as `node`, never as a new npm script.** `packageJson:scripts` is an EAS fingerprint
+source, so adding an alias rotates the OTA `runtimeVersion` and cuts every installed phone off from
+updates until a new APK is sideloaded onto a device holding live clinic data. Adding a
+`supabase:schema` alias did exactly that — `fa84bf12` → `db41047e` — the **third** time this project
+has been caught by it, after an earlier npm alias and a `web/config.js` gitignore line. `.gitignore`
+is a fingerprint source too. Before publishing any update, check
+`eas fingerprint:generate --platform android --environment production` against the installed build's
+`runtimeVersion`; a mismatch is not an error on the phone, it is silence.
 
 ### This does not replace the zip backup
 
