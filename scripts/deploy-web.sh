@@ -68,12 +68,67 @@ EOF
 cleanup() { rm -f web/config.js; }
 trap cleanup EXIT
 
+# ---------------------------------------------------------------------------
+# Deploy, then PROVE it.
+#
+# `eas deploy --prod` printed "Promoted deployment to production" while the
+# production alias stayed on the PREVIOUS deployment - the doctor kept seeing
+# the old dashboard for a whole release. Success on stdout is not evidence, so
+# the alias is now moved by an explicit second command and the result is
+# checked against what the URL actually serves.
+# ---------------------------------------------------------------------------
 if [ "$MODE" = prod ]; then
-  echo "Publishing web/ to PRODUCTION (clinic-stock.expo.app) for $URL"
-  eas_cli deploy --export-dir web --prod --non-interactive --dev-domain clinic-stock
+  TARGET_URL="https://clinic-stock.expo.app"
+  echo "Publishing web/ to PRODUCTION ($TARGET_URL) for $URL"
 else
-  # A named alias rather than the default per-deployment hash URL, so the test
-  # link is stable and can be bookmarked instead of re-copied every deploy.
-  echo "Deploying web/ to PREVIEW (clinic-stock--preview.expo.app) for $URL"
-  eas_cli deploy --export-dir web --alias preview --non-interactive --dev-domain clinic-stock
+  # A named alias rather than the per-deployment hash URL, so the test link is
+  # stable and can be bookmarked instead of re-copied every deploy.
+  TARGET_URL="https://clinic-stock--preview.expo.app"
+  echo "Deploying web/ to PREVIEW ($TARGET_URL) for $URL"
 fi
+
+if [ "$MODE" = prod ]; then
+  OUT=$(eas_cli deploy --export-dir web --non-interactive --dev-domain clinic-stock --json)
+else
+  OUT=$(eas_cli deploy --export-dir web --alias preview --non-interactive --dev-domain clinic-stock --json)
+fi
+
+# The id is read from the JSON rather than scraped from the pretty output,
+# which is decorated and not a contract.
+DEPLOY_ID=$(printf '%s' "$OUT" | node -e '
+  let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+    const j = JSON.parse(s.slice(s.indexOf("{")));
+    const id = j.identifier ?? j.id ?? j.deploymentIdentifier ?? j.deployment?.identifier;
+    if (!id) { console.error("no deployment id in: " + JSON.stringify(j).slice(0, 400)); process.exit(1); }
+    process.stdout.write(String(id));
+  });')
+
+echo "Deployment $DEPLOY_ID"
+
+if [ "$MODE" = prod ]; then
+  # Explicit, separate promotion. This is the step that silently did not happen.
+  eas_cli deploy:alias --prod --id "$DEPLOY_ID" --non-interactive
+fi
+
+# --- proof ------------------------------------------------------------------
+# app.js is served byte-for-byte as it sits in web/, so the checksums must
+# match exactly. The cache-buster matters: this alias carries
+# `cache-control: max-age=3600`, so an unqualified request can answer from the
+# edge and cheerfully confirm the previous release.
+LOCAL_SUM=$(shasum -a 256 web/app.js | cut -d' ' -f1)
+REMOTE_SUM=$(curl -fsS "$TARGET_URL/app.js?deploycheck=$DEPLOY_ID" | shasum -a 256 | cut -d' ' -f1)
+
+if [ "$LOCAL_SUM" != "$REMOTE_SUM" ]; then
+  echo "" >&2
+  echo "DEPLOY FAILED VERIFICATION." >&2
+  echo "  $TARGET_URL/app.js does not match web/app.js." >&2
+  echo "  local  $LOCAL_SUM" >&2
+  echo "  served $REMOTE_SUM" >&2
+  echo "" >&2
+  echo "The upload succeeded but the alias is still on an older deployment." >&2
+  echo "Promote it by hand:" >&2
+  echo "  npx --yes eas-cli@23.2.0 deploy:alias --prod --id $DEPLOY_ID" >&2
+  exit 1
+fi
+
+echo "Verified: $TARGET_URL is serving this build ($LOCAL_SUM)"
