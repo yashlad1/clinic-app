@@ -100,6 +100,36 @@ function todayLocal() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+/** How far back the entries list reaches. One constant, easy to change. */
+const DAYS_BACK = 30;
+
+/** A local date N days ago, in the same YYYY-MM-DD shape as `local_date`. */
+function sinceLocal(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * "Today · Mon 8 Sep" for a stored `local_date`.
+ *
+ * Built from the split parts, NOT `new Date('2026-09-08')`. That form is
+ * parsed as UTC midnight, so anywhere behind UTC it names the PREVIOUS day -
+ * and this page is opened from wherever she happens to be. `new Date(y, m-1, d)`
+ * is local by definition, which is what `local_date` already means.
+ */
+function dayHeading(localDate, today) {
+  const [y, m, d] = String(localDate).split('-').map(Number);
+  if (!y || !m || !d) return String(localDate);
+  const label = `${WEEKDAYS[new Date(y, m - 1, d).getDay()]} ${d} ${MONTHS[m - 1]}`;
+  if (localDate === today) return `Today · ${label}`;
+  if (localDate === sinceLocal(1)) return `Yesterday · ${label}`;
+  return label;
+}
+
 const PILL = { LOW: 'p-low', OUT: 'p-out', NEGATIVE: 'p-check', OK: 'p-ok' };
 const WORD = { LOW: 'LOW', OUT: 'OUT', NEGATIVE: 'CHECK', OK: '' };
 
@@ -178,18 +208,53 @@ function renderStock(rows) {
     : '<p class="meta">No vaccines yet.</p>';
 }
 
-function renderEntries(rows) {
-  $('entries').innerHTML = rows.length
-    ? rows
-        .map((m) => `<div class="row">
-            <div class="grow">
-              <div class="name">${esc(m.vaccine_name || 'Vaccine')}${
-                Math.abs(Number(m.delta_doses)) > 1 ? ` × ${Math.abs(Number(m.delta_doses))}` : ''}</div>
-              <div class="meta">${esc(m.local_time)}${m.patient_label ? ` · ${esc(m.patient_label)}` : ''}</div>
-            </div>
-          </div>`)
-        .join('')
-    : '<p class="meta">Nothing recorded today yet.</p>';
+/**
+ * Entries grouped by the day they were given, newest day first.
+ *
+ * Grouped on `local_date`, which the phone stamps at the moment of the tap, so
+ * a day boundary here means the same thing it meant in the clinic - not what
+ * the server's UTC clock thinks. The rows arrive already ordered, and a Map
+ * preserves insertion order, so this file still sorts nothing itself.
+ *
+ * The child's name is the primary line because that is what she reads when
+ * scanning a day; the vaccine and the time sit beneath it. A skipped name shows
+ * as a muted "No name", which doubles as the day-end list of what to chase up.
+ */
+function renderEntries(rows, today) {
+  if (!rows.length) {
+    $('entries').innerHTML =
+      `<p class="meta">Nothing recorded in the last ${DAYS_BACK} days.</p>`;
+    return;
+  }
+
+  const byDay = new Map();
+  for (const m of rows) {
+    if (!byDay.has(m.local_date)) byDay.set(m.local_date, []);
+    byDay.get(m.local_date).push(m);
+  }
+
+  const out = [];
+  for (const [date, list] of byDay) {
+    const n = list.reduce((t, m) => t + Math.abs(Number(m.delta_doses) || 0), 0);
+    out.push(`<div class="dayhead">
+        <span>${esc(dayHeading(date, today))}</span>
+        <span class="daycount">${n} ${n === 1 ? 'dose' : 'doses'}</span>
+      </div>`);
+    for (const m of list) {
+      const qty = Math.abs(Number(m.delta_doses)) > 1
+        ? ` × ${Math.abs(Number(m.delta_doses))}`
+        : '';
+      out.push(`<div class="row">
+          <div class="grow">
+            <div class="name${m.patient_label ? '' : ' noname'}">${
+              esc(m.patient_label || 'No name')}</div>
+            <div class="meta">${esc(m.local_time)} · ${
+              esc(m.vaccine_name || 'Vaccine')}${qty}</div>
+          </div>
+        </div>`);
+    }
+  }
+  $('entries').innerHTML = out.join('');
 }
 
 async function load() {
@@ -200,8 +265,9 @@ async function load() {
     read('v_stock_on_hand?select=*&order=name.asc'),
     read('v_device_activity?select=*'),
     read(
-      `v_movement_effective?select=local_time,delta_doses,patient_label,vaccine_id` +
-      `&movement_type=eq.ADMINISTRATION&local_date=eq.${today}&order=local_time.desc`,
+      `v_movement_effective?select=local_date,local_time,delta_doses,patient_label,vaccine_id` +
+      `&movement_type=eq.ADMINISTRATION&local_date=gte.${sinceLocal(DAYS_BACK)}` +
+      `&order=local_date.desc,local_time.desc`,
     ),
   ]);
 
@@ -219,7 +285,12 @@ async function load() {
   const nameOf = new Map(stock.map((s) => [s.vaccine_id, s.name]));
   const entries = given.map((g) => ({ ...g, vaccine_name: nameOf.get(g.vaccine_id) }));
 
-  const doses = entries.reduce((n, e) => n + Math.abs(Number(e.delta_doses) || 0), 0);
+  // Scoped to today deliberately. `entries` now spans DAYS_BACK days, and
+  // summing all of it under a heading that reads "Today" would be
+  // confidently wrong - precisely the failure rule 1 at the top forbids.
+  const doses = entries
+    .filter((e) => e.local_date === today)
+    .reduce((n, e) => n + Math.abs(Number(e.delta_doses) || 0), 0);
   $('todayCount').textContent = `${doses} ${doses === 1 ? 'dose' : 'doses'}`;
 
   const lastEntry = Math.max(0, ...devices.map((d) => Number(d.last_entry_at) || 0));
@@ -229,7 +300,7 @@ async function load() {
 
   const stale = renderDevices(devices);
   renderStock(stock);
-  renderEntries(entries);
+  renderEntries(entries, today);
 
   // Freshness ABOVE the numbers, not below them.
   if (stale.length) {

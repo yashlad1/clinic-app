@@ -46,6 +46,21 @@
   .row:last-child { border-bottom: 0; }
   .grow { flex: 1; min-width: 0; }
   .name { font-weight: 600; }
+  /* A skipped name is stated once, muted. It is a gap to fill at day end, not
+     an error, and shouting it turns the whole list into warnings. */
+  .name.noname { font-weight: 600; color: var(--muted); }
+  /* Day separators. The hairline above each heading does the grouping work, so
+     the panel reads as a stack of days instead of one long list. A row already
+     draws its own bottom border, so a heading that follows one must not add a
+     second - hence `.row + .dayhead`. */
+  .dayhead {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; padding: 16px 0 4px; font-size: 16px; font-weight: 700;
+    border-top: 1px solid var(--border);
+  }
+  .dayhead:first-child { border-top: 0; padding-top: 2px; }
+  .row + .dayhead { border-top: 0; }
+  .daycount { font-size: 14px; font-weight: 600; color: var(--muted); }
   .meta { font-size: 14px; color: var(--muted); }
   .num { font-size: 22px; font-weight: 700; white-space: nowrap; }
   .pill {
@@ -116,7 +131,7 @@
     <p class="eyebrow">All stock</p>
     <div class="card" id="stock"></div>
 
-    <p class="eyebrow">Today's entries</p>
+    <p class="eyebrow">Entries by day</p>
     <div class="card" id="entries"></div>
 
     <p class="foot" id="footNote"></p>
