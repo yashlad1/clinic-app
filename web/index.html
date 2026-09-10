@@ -61,6 +61,13 @@
   .dayhead:first-child { border-top: 0; padding-top: 2px; }
   .row + .dayhead { border-top: 0; }
   .daycount { font-size: 14px; font-weight: 600; color: var(--muted); }
+  /* The day picker. `type="date"` on purpose: iOS and Android both give their
+     own familiar calendar, which beats anything hand-rolled here and needs no
+     explaining. Both controls keep the 56dp minimum height from the base
+     input/button rules. */
+  .pickrow { display: flex; gap: 8px; margin-bottom: 10px; }
+  .pickrow input { margin-bottom: 0; flex: 1; min-width: 0; }
+  .pickrow button { width: auto; flex: 0 0 auto; padding: 0 16px; }
   .meta { font-size: 14px; color: var(--muted); }
   .num { font-size: 22px; font-weight: 700; white-space: nowrap; }
   .pill {
@@ -115,6 +122,10 @@
          they read as a cosmetic label change rather than "this page is not
          showing you the truth". -->
     <div id="loadError" class="warn danger hide"></div>
+    <!-- A device set to the wrong timezone stamps every date it writes
+         incorrectly, and the dates themselves look completely ordinary. This is
+         the only place that can be said out loud. -->
+    <div id="tzWarn" class="warn hide"></div>
 
     <p class="eyebrow">Today</p>
     <div class="card">
@@ -132,6 +143,10 @@
     <div class="card" id="stock"></div>
 
     <p class="eyebrow">Entries by day</p>
+    <div class="pickrow">
+      <input id="pickDate" type="date" aria-label="Show one day">
+      <button class="ghost" id="pickClear">Last 30 days</button>
+    </div>
     <div class="card" id="entries"></div>
 
     <p class="foot" id="footNote"></p>

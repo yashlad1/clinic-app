@@ -83,33 +83,83 @@ function ago(ms) {
   return `${days} ${days === 1 ? 'day' : 'days'} ago`;
 }
 
+/**
+ * THE CLINIC RUNS ON IST, SO THIS PAGE DOES TOO - wherever it is opened from.
+ *
+ * Every date and time in the ledger is stamped by the phone in the clinic's own
+ * local time. A dashboard that used the VIEWER's timezone would therefore
+ * disagree with the ledger by a whole day. Measured, not theorised: at
+ * 2026-09-10T02:00Z the clinic is mid-morning on the 10th, but
+ * `new Date().getDate()` in America/New_York returns the 9th - so the hero
+ * would read "0 doses" through a busy immunisation morning.
+ *
+ * India has no daylight saving, so the offset is a constant +05:30. The IANA
+ * zone is still used rather than a hardcoded offset, because a hardcoded one is
+ * a silent lie the day any rule changes.
+ */
+const CLINIC_TZ = 'Asia/Kolkata';
+const CLINIC_TZ_OFFSET_MIN = 330;
+
+const IST_PARTS = new Intl.DateTimeFormat('en-US', {
+  timeZone: CLINIC_TZ,
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', hour12: false,
+});
+
+/**
+ * Read via `formatToParts`, not a formatted string: the layout of a locale's
+ * output is not a contract, and parsing it back is how this breaks quietly on
+ * some browser two years from now.
+ */
+function istParts(d = new Date()) {
+  const p = {};
+  for (const { type, value } of IST_PARTS.formatToParts(d)) p[type] = value;
+  // Some engines render midnight as hour "24" under hour12:false.
+  if (p.hour === '24') p.hour = '00';
+  return p;
+}
+
+/** The clinic's wall clock, e.g. "3:04 pm". */
 function clockTime(d = new Date()) {
-  const h = d.getHours();
+  const p = istParts(d);
+  const h = Number(p.hour);
   const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
+  return `${h12}:${p.minute} ${h < 12 ? 'am' : 'pm'}`;
 }
 
 /**
- * The device's own local date, matching how `local_date` is stamped at write
- * time on the phone. Deliberately not the server's date: "today" has to mean
- * the clinic's day, and the server runs in UTC.
+ * Calendar arithmetic on a YYYY-MM-DD string, done in UTC on purpose.
+ *
+ * Pure calendar dates carry no timezone, and `setDate()` on a local Date would
+ * drag the viewer's DST into a clinic date. `Date.UTC` has no such rules.
+ */
+function shiftDays(ymd, delta) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d) + delta * 86400000);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`;
+}
+
+/**
+ * The CLINIC's current date, matching how `local_date` is stamped at write time
+ * on the phone. Not the server's date (it runs in UTC) and not the viewer's
+ * (she may be reading this from anywhere).
  */
 function todayLocal() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  const p = istParts();
+  return `${p.year}-${p.month}-${p.day}`;
 }
 
 /** How far back the entries list reaches. One constant, easy to change. */
 const DAYS_BACK = 30;
 
-/** A local date N days ago, in the same YYYY-MM-DD shape as `local_date`. */
+/** A clinic date N days back, in the same YYYY-MM-DD shape as `local_date`. */
 function sinceLocal(days) {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return shiftDays(todayLocal(), -days);
 }
+
+/** The day currently being viewed, or null for the rolling window. */
+let pickedDate = null;
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -124,9 +174,15 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 function dayHeading(localDate, today) {
   const [y, m, d] = String(localDate).split('-').map(Number);
   if (!y || !m || !d) return String(localDate);
-  const label = `${WEEKDAYS[new Date(y, m - 1, d).getDay()]} ${d} ${MONTHS[m - 1]}`;
+  // getUTCDay on a UTC-constructed date gives the weekday of a pure calendar
+  // date, independent of wherever the browser happens to be sitting.
+  const wd = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  // The year only earns its space once it is not the current one - which
+  // starts mattering the moment she searches back past January.
+  const yr = String(today).slice(0, 4) === String(y) ? '' : ` ${y}`;
+  const label = `${wd} ${d} ${MONTHS[m - 1]}${yr}`;
   if (localDate === today) return `Today · ${label}`;
-  if (localDate === sinceLocal(1)) return `Yesterday · ${label}`;
+  if (localDate === shiftDays(today, -1)) return `Yesterday · ${label}`;
   return label;
 }
 
@@ -147,11 +203,11 @@ const STALE_MS = 2 * 60 * 60 * 1000;
  * whole payload: `synced_at` on an unrelated row would make every check look
  * like news, which is the same as telling her nothing.
  */
-function signature(stock, devices, entries) {
+function signature(stock, devices, todayEntries) {
   return JSON.stringify([
     devices.map((d) => [d.device_id, d.entries, d.last_synced_at]).sort(),
     stock.map((s) => [s.vaccine_id, s.on_hand_doses]).sort(),
-    entries.length,
+    todayEntries.length,
   ]);
 }
 
@@ -220,10 +276,11 @@ function renderStock(rows) {
  * scanning a day; the vaccine and the time sit beneath it. A skipped name shows
  * as a muted "No name", which doubles as the day-end list of what to chase up.
  */
-function renderEntries(rows, today) {
+function renderEntries(rows, today, picked) {
   if (!rows.length) {
-    $('entries').innerHTML =
-      `<p class="meta">Nothing recorded in the last ${DAYS_BACK} days.</p>`;
+    $('entries').innerHTML = picked
+      ? `<p class="meta">No doses recorded on ${esc(dayHeading(picked, today))}.</p>`
+      : `<p class="meta">Nothing recorded in the last ${DAYS_BACK} days.</p>`;
     return;
   }
 
@@ -261,13 +318,26 @@ async function load() {
   const today = todayLocal();
 
   // Every figure comes from a view. Nothing is computed in this file.
-  const [stock, devices, given] = await Promise.all([
+  const COLS = 'local_date,local_time,delta_doses,patient_label,vaccine_id,tz_offset_minutes';
+
+  // The list follows whatever day she is looking at; TODAY is fetched
+  // separately and always. That separation is the point: the hero panel says
+  // "Today", and it has to keep answering "did today get entered" even while
+  // she is reading back through last Tuesday.
+  const range = pickedDate
+    ? `&local_date=eq.${pickedDate}`
+    : `&local_date=gte.${sinceLocal(DAYS_BACK)}`;
+
+  const [stock, devices, given, todayGiven] = await Promise.all([
     read('v_stock_on_hand?select=*&order=name.asc'),
     read('v_device_activity?select=*'),
     read(
-      `v_movement_effective?select=local_date,local_time,delta_doses,patient_label,vaccine_id` +
-      `&movement_type=eq.ADMINISTRATION&local_date=gte.${sinceLocal(DAYS_BACK)}` +
-      `&order=local_date.desc,local_time.desc`,
+      `v_movement_effective?select=${COLS}&movement_type=eq.ADMINISTRATION` +
+      range + `&order=local_date.desc,local_time.desc`,
+    ),
+    read(
+      `v_movement_effective?select=${COLS}&movement_type=eq.ADMINISTRATION` +
+      `&local_date=eq.${today}&order=local_time.desc`,
     ),
   ]);
 
@@ -285,12 +355,29 @@ async function load() {
   const nameOf = new Map(stock.map((s) => [s.vaccine_id, s.name]));
   const entries = given.map((g) => ({ ...g, vaccine_name: nameOf.get(g.vaccine_id) }));
 
-  // Scoped to today deliberately. `entries` now spans DAYS_BACK days, and
-  // summing all of it under a heading that reads "Today" would be
-  // confidently wrong - precisely the failure rule 1 at the top forbids.
-  const doses = entries
-    .filter((e) => e.local_date === today)
+  const doses = todayGiven
     .reduce((n, e) => n + Math.abs(Number(e.delta_doses) || 0), 0);
+
+  // A device whose timezone is set wrong stamps every date and time it writes
+  // incorrectly, and nothing on this page can detect that from the dates
+  // alone - they look perfectly ordinary. The stored offset is the only
+  // evidence, so it gets checked rather than trusted.
+  const offEntries = entries.filter(
+    (e) => e.tz_offset_minutes != null && Number(e.tz_offset_minutes) !== CLINIC_TZ_OFFSET_MIN);
+  if (offEntries.length) {
+    $('tzWarn').textContent =
+      `${offEntries.length} ${offEntries.length === 1 ? 'entry was' : 'entries were'} saved ` +
+      'by a device that is not set to Indian Standard Time, so its dates and ' +
+      'times may be wrong. Check the date, time and time zone settings on that device.';
+    $('tzWarn').classList.remove('hide');
+  } else {
+    $('tzWarn').classList.add('hide');
+  }
+
+  // Never offer a future day: there can be nothing there, and an empty result
+  // reads as lost data rather than as a day that has not happened yet.
+  $('pickDate').max = today;
+  $('pickDate').value = pickedDate || '';
   $('todayCount').textContent = `${doses} ${doses === 1 ? 'dose' : 'doses'}`;
 
   const lastEntry = Math.max(0, ...devices.map((d) => Number(d.last_entry_at) || 0));
@@ -300,7 +387,7 @@ async function load() {
 
   const stale = renderDevices(devices);
   renderStock(stock);
-  renderEntries(entries, today);
+  renderEntries(entries, today, pickedDate);
 
   // Freshness ABOVE the numbers, not below them.
   if (stale.length) {
@@ -312,7 +399,7 @@ async function load() {
     $('staleWarn').classList.add('hide');
   }
 
-  $('asOf').textContent = `Stock as of ${clockTime()} today`;
+  $('asOf').textContent = `Stock as of ${clockTime()} IST today`;
   $('footNote').textContent =
     'This page only reads. Doses and deliveries are recorded in the app on the clinic phone.';
 
@@ -320,7 +407,7 @@ async function load() {
   // `firstLoad` matters: on the very first load there is nothing to compare
   // against, and claiming "nothing new" then would be a guess dressed up as a
   // fact.
-  const sig = signature(stock, devices, entries);
+  const sig = signature(stock, devices, todayGiven);
   const firstLoad = lastSignature === null;
   const changed = !firstLoad && sig !== lastSignature;
   lastSignature = sig;
@@ -418,6 +505,18 @@ $('refresh').addEventListener('click', async () => {
     if (result) setTimeout(() => { btn.textContent = 'Refresh'; }, 1800);
   }
 });
+// Picking a day asks a different question of the same data. The Refresh
+// comparison is deliberately NOT reset here: its baseline is today's entries,
+// which do not change just because she is reading back through last Tuesday.
+$('pickDate').addEventListener('change', () => {
+  pickedDate = $('pickDate').value || null;
+  void showDash();
+});
+$('pickClear').addEventListener('click', () => {
+  pickedDate = null;
+  void showDash();
+});
+
 $('signout').addEventListener('click', () => { clearSession(); showLogin(); });
 
 // Coming back to the page is the moment the numbers matter, so re-read then.
