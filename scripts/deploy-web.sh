@@ -111,28 +111,46 @@ if [ "$MODE" = prod ]; then
 fi
 
 # --- proof ------------------------------------------------------------------
-# app.js is served byte-for-byte as it sits in web/, so the checksums must
+# Every file is served byte-for-byte as it sits in web/, so the checksums must
 # match exactly. The cache-buster matters: this alias carries
 # `cache-control: max-age=3600`, so an unqualified request can answer from the
 # edge and cheerfully confirm the previous release.
+#
+# EVERY file, not just app.js. Checking one file proves nothing about a deploy
+# that did not change that file: a release adding index.html, 404.html and
+# favicon.svg left app.js untouched, so its checksum matched the PREVIOUS
+# deployment and this script printed "Verified" over an alias that had not
+# moved. A proof that passes when the thing is broken is worse than no proof.
 #
 # RETRIED, because alias routing is eventually consistent. A single immediate
 # check raced it and printed "DEPLOY FAILED VERIFICATION" on a deploy that was
 # fine - the alias caught up about two minutes later. That false alarm is worse
 # than no check at all: it invites a panicked re-promote of the wrong thing.
-LOCAL_SUM=$(shasum -a 256 web/app.js | cut -d' ' -f1)
+#
+# config.js is skipped: it is generated per deploy and holds the credentials,
+# so it is the one file worth never piping through this script's output.
+FILES=$(cd web && find . -type f ! -name 'config.js' | sed 's|^\./||')
 
+MISMATCH=""
 for attempt in $(seq 1 12); do
-  REMOTE_SUM=$(curl -fsS "$TARGET_URL/app.js?deploycheck=$DEPLOY_ID-$attempt" | shasum -a 256 | cut -d' ' -f1) || REMOTE_SUM=""
-  [ "$LOCAL_SUM" = "$REMOTE_SUM" ] && break
-  echo "  waiting for $TARGET_URL to pick up the new alias ($attempt/12)..."
+  MISMATCH=""
+  for f in ${(f)FILES}; do
+    LOCAL_SUM=$(shasum -a 256 "web/$f" | cut -d' ' -f1)
+    REMOTE_SUM=$(curl -fsS "$TARGET_URL/$f?deploycheck=$DEPLOY_ID-$attempt" | shasum -a 256 | cut -d' ' -f1) || REMOTE_SUM=""
+    if [ "$LOCAL_SUM" != "$REMOTE_SUM" ]; then
+      MISMATCH="$f"
+      break
+    fi
+  done
+  [ -z "$MISMATCH" ] && break
+  echo "  waiting for $TARGET_URL to pick up the new alias — $MISMATCH still stale ($attempt/12)..."
   sleep 15
 done
 
-if [ "$LOCAL_SUM" != "$REMOTE_SUM" ]; then
+if [ -n "$MISMATCH" ]; then
   echo "" >&2
   echo "DEPLOY FAILED VERIFICATION after 3 minutes." >&2
-  echo "  $TARGET_URL/app.js does not match web/app.js." >&2
+  echo "  $TARGET_URL/$MISMATCH does not match web/$MISMATCH." >&2
   echo "  local  $LOCAL_SUM" >&2
   echo "  served $REMOTE_SUM" >&2
   echo "" >&2
