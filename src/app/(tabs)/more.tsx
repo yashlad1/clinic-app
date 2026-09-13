@@ -72,8 +72,18 @@ export default function MoreScreen() {
       contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl + bottomInset }]}
       showsVerticalScrollIndicator={false}
     >
-      <Card tone="soft">
-        <T style={st.backupLabel}>{lastBackupLabel(lastBackupAt ?? null)}</T>
+      {/* The one question this screen exists to answer, at the size the other
+          three tabs give their headline number.
+
+          CLAUDE.md section 10 asks for a permanent "Last backup" line so she
+          can answer "am I safe?" without tapping - but it was set in 16pt
+          inside a card, smaller than the row titles under it, so the screen
+          opened on a list of destinations rather than on the answer. Same
+          string, same source; only the scale and the eyebrow are new. */}
+      <T style={st.eyebrow}>Your data</T>
+      <T style={st.headline}>{lastBackupLabel(lastBackupAt ?? null)}</T>
+
+      <Card tone="soft" style={{ marginTop: space.md }}>
         <Row title="Back up / restore" onPress={() => router.push('/backup')} />
         {/* The pending count is the honest answer to "is my data safe?" - a
             server backup that is quietly 40 entries behind is worse than none,
@@ -156,11 +166,13 @@ export default function MoreScreen() {
 
 const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
-  backupLabel: {
-    fontSize: type.label,
-    fontWeight: weight.semibold,
+  eyebrow: { fontSize: type.min, color: color.textMuted, fontWeight: weight.semibold },
+  headline: {
+    fontSize: type.big,
+    fontWeight: weight.bold,
     color: color.text,
-    marginBottom: space.xs,
+    marginTop: 2,
+    lineHeight: 34,
   },
   note: {
     fontSize: type.min,

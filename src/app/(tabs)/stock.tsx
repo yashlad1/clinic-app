@@ -66,18 +66,27 @@ export default function AddStockScreen() {
               <Card tone="soft" style={{ marginTop: space.md }}>
                 <T style={st.stripLabel}>Today</T>
                 {/* What the paper notebook was trying to be, with the
-                    arithmetic done and self-checking. */}
-                <T style={st.stripText}>
-                  Opening {strip.opening} · +Received {strip.received} · −Given {strip.given} ·
-                  −Wasted {strip.wasted}
-                  {strip.adjusted !== 0
-                    ? ` · Adjusted ${strip.adjusted > 0 ? '+' : ''}${strip.adjusted}`
-                    : ''}
-                  {strip.corrections !== 0
-                    ? ` · Corrections ${strip.corrections > 0 ? '+' : ''}${strip.corrections}`
-                    : ''}
-                </T>
-                <T style={st.stripNow}>= {strip.now} doses now</T>
+                    arithmetic done and self-checking.
+
+                    It used to be one wrapped sentence of 14pt grey - the
+                    smallest, faintest type on the screen - for the figures
+                    CLAUDE.md section 9 calls the point of the report. Numbers
+                    that matter are 22-28pt bold by rule, and an equation is
+                    read term by term, so each term now gets its own labelled
+                    column and the row wraps instead of reflowing mid-sum. */}
+                <View style={st.stripRow}>
+                  <StripTerm label="Opening" value={strip.opening} />
+                  <StripTerm label="+ Received" value={strip.received} />
+                  <StripTerm label="− Given" value={strip.given} />
+                  <StripTerm label="− Wasted" value={strip.wasted} />
+                  {strip.adjusted !== 0 ? (
+                    <StripTerm label="Adjusted" value={strip.adjusted} signed />
+                  ) : null}
+                  {strip.corrections !== 0 ? (
+                    <StripTerm label="Corrections" value={strip.corrections} signed />
+                  ) : null}
+                  <StripTerm label="= Now" value={strip.now} total />
+                </View>
               </Card>
             ) : null}
 
@@ -140,6 +149,29 @@ export default function AddStockScreen() {
   );
 }
 
+/** One term of the movement equation: a label, then the figure under it. */
+function StripTerm({
+  label,
+  value,
+  signed,
+  total,
+}: {
+  label: string;
+  value: number;
+  signed?: boolean;
+  total?: boolean;
+}) {
+  return (
+    <View>
+      <T style={st.stripTermLabel}>{label}</T>
+      <T style={[st.stripTermValue, total ? st.stripTermTotal : null]}>
+        {signed && value > 0 ? '+' : ''}
+        {value}
+      </T>
+    </View>
+  );
+}
+
 const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
   headerWrap: { paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.md },
@@ -153,8 +185,17 @@ const st = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: space.xs,
   },
-  stripText: { fontSize: type.min, color: color.textMuted, lineHeight: 21 },
-  stripNow: { fontSize: type.title, fontWeight: weight.bold, color: color.text, marginTop: space.sm },
+  // columnGap carries the separation the `·` used to, so no glyph has to.
+  stripRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: space.md,
+    columnGap: space.xl,
+    marginTop: space.sm,
+  },
+  stripTermLabel: { fontSize: type.min, color: color.textMuted, fontWeight: weight.semibold },
+  stripTermValue: { fontSize: type.title, fontWeight: weight.bold, color: color.text },
+  stripTermTotal: { fontSize: type.big, color: color.stock },
   chipRow: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
 
   row: {

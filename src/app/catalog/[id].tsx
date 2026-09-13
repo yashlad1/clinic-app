@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BigButton, Chip, ErrorState, Field, Footer, Input, Loading, SecondaryButton, Stepper, T } from '../../ui/components';
-import { color, space, type, weight } from '../../ui/tokens';
+import { color, space, type } from '../../ui/tokens';
 import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { useAction } from '../../ui/use-action';
+import { removeVaccine, restoreVaccine, vaccineUsage } from '../../db/repo/catalog';
 import type { UnitMode, Vaccine } from '../../domain/types';
 
 /**
@@ -60,6 +61,52 @@ export default function EditVaccineScreen() {
     router.back();
   });
 
+  /**
+   * Removing, with the consequence stated in real numbers.
+   *
+   * "Are you sure?" is not information. What she needs to know is whether
+   * stock is about to stop being counted and how much history the row is
+   * carrying - so the dialog says both, and says plainly that nothing is
+   * erased. The undo is a toast because the removal is a soft delete: adding
+   * it back is a single write, available here or from the Removed list later.
+   */
+  const confirmRemove = () => void run('check this vaccine', async () => {
+    const usage = await vaccineUsage(db, id);
+    const lines = [`"${vaccine.name}" will be removed from every list and picker.`];
+    if (usage.onHandDoses !== 0) {
+      lines.push(
+        `\nWARNING: ${usage.onHandDoses} doses are currently in stock. That stock will no longer be counted anywhere.`,
+      );
+    }
+    if (usage.movements > 0) {
+      lines.push(
+        `\n${usage.dosesGiven} doses given and ${usage.movements} entries stay in your records — nothing is erased. You can add it back at any time.`,
+      );
+    } else {
+      lines.push('\nIt has never been used, so nothing is lost.');
+    }
+
+    Alert.alert(`Remove ${vaccine.name}?`, lines.join(''), [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () =>
+          void run(`remove ${vaccine.name}`, async () => {
+            await removeVaccine(db, id);
+            bump();
+            router.back();
+            toast.show(`${vaccine.name} removed.`, async () => {
+              await run(`add ${vaccine.name} back`, async () => {
+                await restoreVaccine(db, id);
+                bump();
+              });
+            });
+          }),
+      },
+    ]);
+  });
+
   return (
     <View style={st.screen}>
       <ScrollView contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl }]}>
@@ -90,6 +137,15 @@ export default function EditVaccineScreen() {
             <Chip accent="catalog" label="Hidden" selected={!active} onPress={() => setActive(false)} />
           </View>
         </Field>
+
+        {/* Well away from SAVE, which keeps the 64dp thumb zone to itself. */}
+        <View style={st.removeBlock}>
+          <T style={st.removeHint}>
+            Removing takes this vaccine out of every list. Everything it has recorded stays in your
+            records, and you can add it back at any time.
+          </T>
+          <SecondaryButton label={`Remove ${vaccine.name}`} danger onPress={confirmRemove} />
+        </View>
       </ScrollView>
       <Footer>
         <BigButton accent="catalog" label="SAVE" onPress={save} disabled={!name.trim()} />
@@ -101,4 +157,6 @@ export default function EditVaccineScreen() {
 const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  removeBlock: { marginTop: space.xxl, gap: space.sm },
+  removeHint: { fontSize: type.min, color: color.textMuted, lineHeight: 21 },
 });

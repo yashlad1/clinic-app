@@ -180,16 +180,24 @@ export default function GiveDoseScreen() {
                 pressed && st.tilePressed,
               ]}
             >
-              {d.badge ? (
-                <View style={st.tileBadge}>
-                  <Badge text={d.badge} tone={d.level === 'LOW' ? 'low' : 'danger'} />
-                </View>
-              ) : null}
               <T style={st.tileName} numberOfLines={3}>
                 {item.name}
               </T>
               <View style={{ flex: 1, minHeight: space.sm }} />
-              <T style={[st.tileStock, { color: tone }]}>{d.primary}</T>
+              {/* The badge sits IN FLOW beside the number, not absolutely
+                  positioned over the corner. At font scale 1.6x a two-line
+                  trade name reaches the top-right corner and the old badge
+                  printed straight over it - and a LOW pill sitting on top of
+                  the vaccine's own name is exactly the kind of thing that only
+                  shows up on the phone of the person relying on it. Keeping
+                  the two together also reads better: the count and its state
+                  are one fact, not two. */}
+              <View style={st.tileFoot}>
+                <T style={[st.tileStock, { color: tone }]}>{d.primary}</T>
+                {d.badge ? (
+                  <Badge text={d.badge} tone={d.level === 'LOW' ? 'low' : 'danger'} />
+                ) : null}
+              </View>
             </Pressable>
           );
         }}
@@ -235,5 +243,12 @@ const st = StyleSheet.create({
   tilePressed: { backgroundColor: color.doseSoft, transform: [{ scale: 0.985 }] },
   tileName: { fontSize: type.title, fontWeight: weight.semibold, color: color.text, lineHeight: 27 },
   tileStock: { fontSize: type.body, fontWeight: weight.bold },
-  tileBadge: { position: 'absolute', top: space.md, right: space.md, zIndex: 1 },
+  // Wraps so the badge drops below the count rather than squeezing it at 1.6x.
+  tileFoot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: space.xs,
+  },
 });
