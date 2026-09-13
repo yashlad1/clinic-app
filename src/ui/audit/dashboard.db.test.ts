@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -15,6 +15,7 @@ import { join } from 'node:path';
 const WEB = join(__dirname, '..', '..', '..', 'web');
 const html = readFileSync(join(WEB, 'index.html'), 'utf8');
 const js = readFileSync(join(WEB, 'app.js'), 'utf8');
+const notFound = readFileSync(join(WEB, '404.html'), 'utf8');
 
 const matchAll = (src: string, re: RegExp) => [...src.matchAll(re)].map((m) => m[1]);
 
@@ -37,6 +38,39 @@ describe('web dashboard', () => {
     // is not counted as a selected tab.
     expect(matchAll(html, /<button([^>]*aria-selected="true")/g)).toHaveLength(1);
     expect(matchAll(html, /class="(pane[^"]*)"/g).filter((c) => !c.includes('hide'))).toHaveLength(1);
+  });
+
+  /**
+   * The CSP is what makes a missed esc() inert instead of exploitable, and it
+   * is one line in a file nobody reads top to bottom. Deleting it would break
+   * nothing visible, which is exactly why it needs a test.
+   */
+  test.each([
+    ['index.html', html],
+    ['404.html', notFound],
+  ])('%s sets a Content-Security-Policy that blocks foreign script', (_name, page) => {
+    const csp = page.match(/http-equiv="Content-Security-Policy"[^>]*content="([^"]+)"/s)?.[1];
+    expect(csp).toBeDefined();
+    // 'self' or 'none' - either blocks an injected <script src>. 'unsafe-inline'
+    // anywhere in script-src would make the whole policy decorative.
+    expect(csp).toMatch(/script-src '(self|none)'|default-src 'none'/);
+    expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
+  });
+
+  test.each([
+    ['index.html', html],
+    ['404.html', notFound],
+  ])('%s links a favicon that exists', (_name, page) => {
+    const icon = page.match(/<link rel="icon" href="([^"]+)"/)?.[1];
+    expect(icon).toBeDefined();
+    expect(existsSync(join(WEB, icon!))).toBe(true);
+  });
+
+  // EAS Hosting serves index.html for unknown paths unless a 404.html is
+  // present, so without this file a typo silently renders the dashboard at
+  // status 200 - which is how a wrong URL comes to look like working software.
+  test('the 404 page offers a way back', () => {
+    expect(notFound).toMatch(/href="\/"/);
   });
 
   // Section 10a and DASHBOARD.md both promise this page cannot write. A read

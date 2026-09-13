@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Page not found · Clinic Stock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<!-- Stricter than the dashboard's: this page runs no JavaScript at all and
+     talks to nothing, so it should be allowed to do neither. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  style-src 'unsafe-inline';
+  img-src 'self';
+  base-uri 'self';
+  form-action 'none'">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+  /* Deliberately self-contained. Sharing the dashboard's stylesheet would mean
+     a "page not found" that can itself fail to load. */
+  body {
+    margin: 0; background: #FFFFFF; color: #0F172A;
+    font: 18px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding-top: 15vh; }
+  h1 { font-size: 28px; margin: 0 0 8px; }
+  p { font-size: 18px; color: #55606E; margin: 0 0 24px; }
+  a {
+    display: block; min-height: 56px; line-height: 56px; text-align: center;
+    background: #0F766E; color: #FFFFFF; text-decoration: none;
+    border-radius: 14px; font-weight: 600;
+  }
+  .note { font-size: 14px; color: #55606E; margin: 24px 0 0; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Page not found</h1>
+    <!-- States where the data is, because a broken link on the page you check
+         your clinic from reads as "the data is gone" unless told otherwise. -->
+    <p>That link does not exist. Nothing is wrong with your records.</p>
+    <a href="/">Open Clinic Stock</a>
+    <p class="note">
+      Doses and deliveries are recorded in the app on the clinic phone. This site only reads.
+    </p>
+  </div>
+</body>
+</html>

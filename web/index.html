@@ -10,7 +10,41 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Clinic Stock">
 <meta name="theme-color" content="#FFFFFF">
+<!--
+  Content Security Policy.
+
+  This page renders clinic data into innerHTML from template strings. Every
+  interpolation goes through esc() today and a security review traced all of
+  them, but the whole rendering model is one missed esc() away from stored XSS
+  - a vaccine name or a child's name typed on one phone, executing in the
+  browser of whoever opens the dashboard. `script-src 'self'` is what makes
+  that mistake inert rather than exploitable.
+
+  In a <meta> tag rather than a response header because EAS Hosting has no
+  per-deployment headers file for a plain static deploy: the only mechanism is
+  the expo-router plugin in app.json, and app.json is an EAS FINGERPRINT
+  SOURCE. Editing it would rotate the OTA runtimeVersion and cut every
+  installed phone off from updates - the exact accident CLAUDE.md section 10a
+  records three times already. A meta tag costs nothing and risks nothing.
+
+  The cost of that choice: `frame-ancestors` is ignored in a meta tag, so
+  clickjacking is not covered here. Tracked as an issue, not silently dropped.
+
+  'unsafe-inline' for styles only - this file's <style> block and a handful of
+  style="" attributes. Script injection is the threat; style injection on a
+  page with no credentials in the DOM is not worth a stylesheet round trip.
+-->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self';
+  connect-src 'self' https://*.supabase.co;
+  object-src 'none';
+  base-uri 'self';
+  form-action 'none'">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.png">
 <style>
   /* Same scale and palette as the app (src/ui/tokens.ts): 18pt body, 14pt
