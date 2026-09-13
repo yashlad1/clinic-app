@@ -18,22 +18,32 @@
   :root {
     --text: #0F172A; --muted: #55606E; --bg: #FFFFFF; --sunken: #F1F5F9;
     --border: #E2E8F0; --ok: #15803D; --low: #B45309; --danger: #B91C1C;
-    --stock: #0F766E;
+    --dose: #1D4ED8; --stock: #0F766E; --slate: #475569;
+    --accent: var(--dose);
   }
+  /* The per-tab accent is the app's safety feature (CLAUDE.md section 7),
+     carried over so the two pages do not look like different products. */
+  body[data-tab="today"]   { --accent: var(--dose); }
+  body[data-tab="stock"]   { --accent: var(--stock); }
+  body[data-tab="entries"] { --accent: var(--slate); }
+
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
     font: 18px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    padding: env(safe-area-inset-top) 0 0;
     -webkit-text-size-adjust: 100%;
   }
-  .wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
+  /* Wide enough for the stock grid to ADD COLUMNS on a laptop. The text inside
+     it is capped separately by `.narrow` - bound the text, not the grid. */
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+  .narrow { max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0; }
   .eyebrow {
     font-size: 14px; color: var(--muted); font-weight: 600;
     text-transform: uppercase; letter-spacing: .8px; margin: 24px 0 8px;
   }
-  .hero { font-size: 34px; font-weight: 700; margin: 0; }
+  .hero { font-size: 34px; font-weight: 700; margin: 0; line-height: 1.15; }
   .sub { font-size: 16px; color: var(--muted); margin: 2px 0 0; }
   .card {
     border: 1px solid var(--border); border-radius: 14px;
@@ -49,6 +59,66 @@
   /* A skipped name is stated once, muted. It is a gap to fill at day end, not
      an error, and shouting it turns the whole list into warnings. */
   .name.noname { font-weight: 600; color: var(--muted); }
+
+  /* ---------------------------------------------------------------- header */
+  .head { padding: 12px 0 10px; }
+  /* Sticky, so the two controls that are always worth having - which view, and
+     is this current - never sit at the bottom of a 30-day list. */
+  .tabbar {
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  /* Scrolls horizontally rather than clipping, so it survives font scale 1.6x
+     the same way the app's own top tabs do. */
+  .tabbar .wrap { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  .tabbar .wrap::-webkit-scrollbar { display: none; }
+  .tab {
+    font: inherit; font-size: 16px; font-weight: 700; letter-spacing: .4px;
+    text-transform: uppercase; white-space: nowrap;
+    background: none; border: 0; border-bottom: 3px solid transparent;
+    color: var(--muted); min-height: 56px; width: auto; padding: 0 14px;
+    display: flex; align-items: center; gap: 8px; border-radius: 0;
+  }
+  .tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  .tabcount {
+    font-size: 14px; font-weight: 700; min-width: 24px; padding: 1px 7px;
+    border-radius: 999px; background: #FEF3C7; color: var(--low);
+  }
+  .tabcount:empty { display: none; }
+
+  /* ----------------------------------------------------------- stat tiles */
+  .stats { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .stat {
+    border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px;
+    background: var(--bg); box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  }
+  .stat .label {
+    font-size: 14px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .8px; margin: 0 0 2px;
+  }
+
+  /* ---------------------------------------------------------- stock grid */
+  /* `auto-fill` IS `useColumns()`, in one line and with no resize listener:
+     2 columns on a phone, 4-5 on a laptop, tile held at ~160dp everywhere.
+     Capping the grid instead would SHRINK the tiles as the screen grows. */
+  .grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); }
+  .tile {
+    border: 1px solid var(--border); border-left: 5px solid var(--border);
+    border-radius: 16px; padding: 12px 14px; background: var(--bg);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+    display: flex; flex-direction: column; gap: 4px; min-height: 116px;
+  }
+  /* Colour AND a word - the bar reinforces the pill, it never replaces it.
+     The TILE stays white on purpose: a soft amber tint behind an amber pill
+     left the two within 1.07:1 of each other, so the pill stopped reading as a
+     chip. The bar carries the colour and the pill keeps its measured contrast. */
+  .tile.lv-LOW { border-left-color: var(--low); }
+  .tile.lv-OUT, .tile.lv-NEGATIVE { border-left-color: var(--danger); }
+  .tile.lv-OK { border-left-color: var(--ok); }
+  .tile .tname { font-size: 18px; font-weight: 600; line-height: 1.25; }
+  .tile .tnum { font-size: 28px; font-weight: 700; margin-top: auto; }
+  .tile .tunit { font-size: 14px; font-weight: 600; color: var(--muted); }
+
   /* Day separators. The hairline above each heading does the grouping work, so
      the panel reads as a stack of days instead of one long list. A row already
      draws its own bottom border, so a heading that follows one must not add a
@@ -73,13 +143,14 @@
   .pill {
     font-size: 14px; font-weight: 700; letter-spacing: .6px;
     padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+    align-self: flex-start;
   }
   .p-low { background: #FEF3C7; color: var(--low); }
   .p-out, .p-check { background: #FEE2E2; color: var(--danger); }
   .p-ok  { background: #DCFCE7; color: var(--ok); }
   button {
     font: inherit; font-weight: 600; min-height: 56px; width: 100%;
-    border-radius: 14px; border: 0; background: var(--stock); color: #fff;
+    border-radius: 14px; border: 0; background: var(--accent); color: #fff;
     padding: 0 16px;
   }
   button.ghost { background: var(--sunken); color: var(--text); }
@@ -90,20 +161,32 @@
   }
   .warn {
     background: #FEF3C7; color: var(--low); border-radius: 14px;
-    padding: 12px 16px; font-size: 16px; font-weight: 600; margin-bottom: 12px;
+    padding: 12px 16px; font-size: 16px; font-weight: 600; margin: 12px 0 0;
   }
   .warn.danger { background: #FEE2E2; color: var(--danger); }
   button:disabled { opacity: .6; }
   .err { color: var(--danger); font-weight: 600; font-size: 16px; }
-  .hide { display: none; }
+  .hide { display: none !important; }
   .foot { font-size: 14px; color: var(--muted); margin: 24px 0 8px; }
+
+  /* -------------------------------------------------------- bottom bar */
+  /* Sticky rather than fixed, so it reserves its own space in flow and can
+     never sit permanently on top of the last row of a list. */
+  .bottombar {
+    position: sticky; bottom: 0; z-index: 5; margin-top: 24px;
+    background: var(--bg); border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bottombar .inner {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  }
+  .bottombar button { width: auto; flex: 0 0 auto; min-width: 132px; }
 </style>
 </head>
-<body>
-<div class="wrap">
+<body data-tab="today">
 
-  <section id="login">
-    <h1>Clinic Stock</h1>
+  <section id="login" class="wrap narrow">
+    <h1 style="margin-top:24px">Clinic Stock</h1>
     <p class="sub">Sign in to see today's stock. This page can only read — it cannot change anything.</p>
     <div style="margin-top:24px">
       <input id="email" type="email" autocomplete="username" placeholder="Email" autocapitalize="off" autocorrect="off">
@@ -114,52 +197,87 @@
   </section>
 
   <section id="dash" class="hide">
-    <h1>Clinic Stock</h1>
-    <p class="sub" id="asOf">—</p>
-
-    <div id="staleWarn" class="warn hide"></div>
-    <!-- Load failures used to be written into the small grey subtitle, where
-         they read as a cosmetic label change rather than "this page is not
-         showing you the truth". -->
-    <div id="loadError" class="warn danger hide"></div>
-    <!-- A device set to the wrong timezone stamps every date it writes
-         incorrectly, and the dates themselves look completely ordinary. This is
-         the only place that can be said out loud. -->
-    <div id="tzWarn" class="warn hide"></div>
-
-    <p class="eyebrow">Today</p>
-    <div class="card">
-      <p class="hero" id="todayCount">—</p>
-      <p class="sub" id="lastEntry">—</p>
+    <div class="wrap">
+      <div class="head">
+        <h1>Clinic Stock</h1>
+        <p class="sub" id="asOf">—</p>
+      </div>
     </div>
 
-    <p class="eyebrow">Devices</p>
-    <div class="card" id="devices"></div>
+    <nav class="tabbar" id="tabs" role="tablist">
+      <div class="wrap">
+        <button class="tab" role="tab" data-tab="today" aria-selected="true">Today</button>
+        <button class="tab" role="tab" data-tab="stock" aria-selected="false">
+          Stock<span class="tabcount" id="stockBadge"></span>
+        </button>
+        <button class="tab" role="tab" data-tab="entries" aria-selected="false">Entries</button>
+      </div>
+    </nav>
 
-    <p class="eyebrow">Needs attention</p>
-    <div class="card" id="attention"></div>
+    <div class="wrap">
+      <!-- Outside the panes on purpose: freshness has to be stated wherever she
+           is looking, not only on the tab that happens to own the numbers. -->
+      <div id="staleWarn" class="warn hide"></div>
+      <!-- Load failures used to be written into the small grey subtitle, where
+           they read as a cosmetic label change rather than "this page is not
+           showing you the truth". -->
+      <div id="loadError" class="warn danger hide"></div>
+      <!-- A device set to the wrong timezone stamps every date it writes
+           incorrectly, and the dates themselves look completely ordinary. This is
+           the only place that can be said out loud. -->
+      <div id="tzWarn" class="warn hide"></div>
 
-    <p class="eyebrow">All stock</p>
-    <div class="card" id="stock"></div>
+      <div class="pane narrow" data-tab="today">
+        <p class="eyebrow">Today</p>
+        <div class="stats">
+          <div class="stat">
+            <p class="label">Doses given</p>
+            <p class="hero" id="todayCount">—</p>
+            <p class="sub" id="lastEntry">—</p>
+          </div>
+          <div class="stat">
+            <p class="label">Low or out</p>
+            <p class="hero" id="attnCount">—</p>
+            <p class="sub" id="attnNote">—</p>
+          </div>
+        </div>
 
-    <p class="eyebrow">Entries by day</p>
-    <div class="pickrow">
-      <input id="pickDate" type="date" aria-label="Show one day">
-      <button class="ghost" id="pickClear">Last 30 days</button>
+        <p class="eyebrow">Needs attention</p>
+        <div class="card" id="attention"></div>
+
+        <p class="eyebrow">Devices</p>
+        <div class="card" id="devices"></div>
+
+        <p class="foot" id="footNote"></p>
+        <button class="ghost" id="signout">Sign out</button>
+      </div>
+
+      <div class="pane hide" data-tab="stock">
+        <p class="eyebrow">All stock · doses on hand</p>
+        <div class="grid" id="stock"></div>
+      </div>
+
+      <div class="pane narrow hide" data-tab="entries">
+        <p class="eyebrow">Entries by day</p>
+        <div class="pickrow">
+          <input id="pickDate" type="date" aria-label="Show one day">
+          <button class="ghost" id="pickClear">Last 30 days</button>
+        </div>
+        <div class="card" id="entries"></div>
+      </div>
     </div>
-    <div class="card" id="entries"></div>
 
-    <p class="foot" id="footNote"></p>
-    <!-- Muted, not amber, on purpose. "Nothing new" is the normal healthy
-         state; colouring it as a warning would train the eye to skip amber,
-         and amber has to stay meaningful for the staleness banner above. -->
-    <p class="sub" id="checked" style="margin:0 0 8px">—</p>
-    <button class="ghost" id="refresh">Refresh</button>
-    <p style="height:8px"></p>
-    <button class="ghost" id="signout">Sign out</button>
+    <div class="bottombar">
+      <div class="wrap inner">
+        <!-- Muted, not amber, on purpose. "Nothing new" is the normal healthy
+             state; colouring it as a warning would train the eye to skip amber,
+             and amber has to stay meaningful for the staleness banner above. -->
+        <p class="sub grow" id="checked" style="margin:0">—</p>
+        <button class="ghost" id="refresh">Refresh</button>
+      </div>
+    </div>
   </section>
 
-</div>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>

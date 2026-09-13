@@ -7,16 +7,25 @@ It answers the two questions that prompted it: **is there stock**, and **did tod
 
 ---
 
-## What it shows, in this order
+## What it shows
 
-1. **A warning if any device has not reached the server for over 2 hours.** Above the numbers, not
-   below them — a stock count read at home while the clinic phone is behind is wrong and reads as
-   fact.
-2. **Doses today**, and how long ago the last entry was.
-3. **Each device**: last entry, last contact with the server, and `UP TO DATE` or `BEHIND`.
-4. **Needs attention**: only what is `CHECK`, `OUT` or `LOW`, most urgent first.
-5. **All stock**, alphabetical.
-6. **Today's entries**, with times.
+**Three tabs**, each with the accent colour the same view carries in the app, plus a bar pinned to
+the bottom holding **Refresh** and when it last checked. It used to be one column with everything
+stacked in it — so answering "is there stock" meant scrolling past a month of entries, and Refresh
+sat underneath all of them.
+
+Warnings sit above the tabs, visible from every one of them. The staleness warning in particular is
+**above the numbers, not below them**: a stock count read at home while the clinic phone is behind is
+wrong and reads as fact.
+
+| Tab | Shows |
+| --- | --- |
+| **Today** (blue) | Doses given today and how long ago the last entry was · how many vaccines are low or out · **Needs attention**, only what is `CHECK`, `OUT` or `LOW`, most urgent first · **Devices**: last entry, last contact with the server, `UP TO DATE` or `BEHIND` |
+| **Stock** (teal) | Every vaccine as a tile in a grid, alphabetical, doses on hand. The tab carries a count of what needs attention, so the reason to open it is visible from Today |
+| **Entries** (slate) | The last 30 days grouped by day, or one picked day |
+
+The grid **adds columns** as the screen widens — two on a phone, four or five on a laptop — rather
+than stretching or shrinking the tiles. Same rule as the app: bound the text, not the grid.
 
 Every figure comes from a Postgres view. **Nothing is calculated in the page**, including whether a
 vaccine counts as low — that would be a second definition of "low", and the one that drifts would

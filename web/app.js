@@ -188,6 +188,8 @@ function dayHeading(localDate, today) {
 
 const PILL = { LOW: 'p-low', OUT: 'p-out', NEGATIVE: 'p-check', OK: 'p-ok' };
 const WORD = { LOW: 'LOW', OUT: 'OUT', NEGATIVE: 'CHECK', OK: '' };
+/** Lower case, for counting them in a sentence: "2 low · 1 out". */
+const PLAIN = { LOW: 'low', OUT: 'out', NEGATIVE: 'to check' };
 
 /* ---------------------------------------------------------------- render */
 
@@ -241,27 +243,65 @@ function renderDevices(devices) {
  *  LOW, NEGATIVE, OK, OUT - which is not a severity order. */
 const RANK = { NEGATIVE: 0, OUT: 1, LOW: 2, OK: 3 };
 
+/**
+ * "Needs attention" stays a LIST, "All stock" becomes a GRID.
+ *
+ * They are read differently. The short list is a to-do, read top to bottom in
+ * severity order. The full catalog is ~26 vaccines and the only question asked
+ * of it is "how much of X is there" - which is a lookup, and a wall of
+ * identical rows is the worst shape for a lookup. The grid is the same trick
+ * the app's home screen uses, and `auto-fill` widens it on a laptop instead of
+ * leaving a phone-width ribbon down the middle of the screen.
+ */
 function renderStock(rows) {
   const attention = rows
     .filter((r) => r.level !== 'OK')
     .sort((a, b) => (RANK[a.level] ?? 9) - (RANK[b.level] ?? 9));
+
+  const pill = (r) =>
+    r.level !== 'OK' ? `<span class="pill ${PILL[r.level]}">${WORD[r.level]}</span>` : '';
+
   const line = (r) => `<div class="row">
       <div class="grow">
         <div class="name">${esc(r.name)}</div>
         ${Number(r.min_balance_doses) > 0
           ? `<div class="meta">keep ${esc(r.min_balance_doses)} doses</div>` : ''}
       </div>
-      ${r.level !== 'OK' ? `<span class="pill ${PILL[r.level]}">${WORD[r.level]}</span>` : ''}
+      ${pill(r)}
       <div class="num">${esc(r.on_hand_doses)}</div>
+    </div>`;
+
+  const tile = (r) => `<div class="tile lv-${esc(r.level)}">
+      <div class="tname">${esc(r.name)}</div>
+      ${pill(r)}
+      <div class="tnum">${esc(r.on_hand_doses)} <span class="tunit">doses</span></div>
+      ${r.level !== 'OK' && Number(r.min_balance_doses) > 0
+        ? `<div class="meta">keep ${esc(r.min_balance_doses)}</div>` : ''}
     </div>`;
 
   $('attention').innerHTML = attention.length
     ? attention.map(line).join('')
     : '<p class="meta">Nothing low or out. Everything is above its safety limit.</p>';
 
+  // The empty state is a sentence, not a tile, so it must not sit in a grid
+  // cell 158px wide.
+  $('stock').classList.toggle('grid', rows.length > 0);
   $('stock').innerHTML = rows.length
-    ? rows.map(line).join('')
+    ? rows.map(tile).join('')
     : '<p class="meta">No vaccines yet.</p>';
+
+  // A count on the tab, so the reason to open Stock is visible from Today.
+  $('stockBadge').textContent = attention.length ? String(attention.length) : '';
+  $('attnCount').textContent = String(attention.length);
+  $('attnNote').textContent = attention.length
+    ? ['NEGATIVE', 'OUT', 'LOW']
+        .map((l) => {
+          const n = attention.filter((r) => r.level === l).length;
+          return n ? `${n} ${PLAIN[l]}` : null;
+        })
+        .filter(Boolean)
+        .join(' · ')
+    : `All ${rows.length} above their safety limit`;
 }
 
 /**
@@ -378,7 +418,8 @@ async function load() {
   // reads as lost data rather than as a day that has not happened yet.
   $('pickDate').max = today;
   $('pickDate').value = pickedDate || '';
-  $('todayCount').textContent = `${doses} ${doses === 1 ? 'dose' : 'doses'}`;
+  // Just the figure: the tile's own label already says what it counts.
+  $('todayCount').textContent = String(doses);
 
   const lastEntry = Math.max(0, ...devices.map((d) => Number(d.last_entry_at) || 0));
   $('lastEntry').textContent = lastEntry
@@ -420,6 +461,34 @@ async function load() {
 
   return { changed, firstLoad };
 }
+
+/* ------------------------------------------------------------------ tabs */
+
+/**
+ * Three views instead of one endless column.
+ *
+ * Everything used to be stacked: today, devices, attention, the whole catalog,
+ * then a month of entries - so the two controls at the bottom sat below a few
+ * hundred rows, and "is there stock" meant scrolling past everything else.
+ *
+ * `data-tab` on <body> also drives the accent, so which view is open is legible
+ * from the colour alone - the same safety cue the app's top tabs carry.
+ */
+function showTab(name) {
+  document.body.dataset.tab = name;
+  for (const b of document.querySelectorAll('.tab')) {
+    b.setAttribute('aria-selected', String(b.dataset.tab === name));
+  }
+  for (const p of document.querySelectorAll('.pane')) {
+    p.classList.toggle('hide', p.dataset.tab !== name);
+  }
+  window.scrollTo(0, 0);
+}
+
+$('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('.tab');
+  if (b) showTab(b.dataset.tab);
+});
 
 /* ------------------------------------------------------------------ boot */
 

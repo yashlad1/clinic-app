@@ -115,19 +115,41 @@ fi
 # match exactly. The cache-buster matters: this alias carries
 # `cache-control: max-age=3600`, so an unqualified request can answer from the
 # edge and cheerfully confirm the previous release.
+#
+# RETRIED, because alias routing is eventually consistent. A single immediate
+# check raced it and printed "DEPLOY FAILED VERIFICATION" on a deploy that was
+# fine - the alias caught up about two minutes later. That false alarm is worse
+# than no check at all: it invites a panicked re-promote of the wrong thing.
 LOCAL_SUM=$(shasum -a 256 web/app.js | cut -d' ' -f1)
-REMOTE_SUM=$(curl -fsS "$TARGET_URL/app.js?deploycheck=$DEPLOY_ID" | shasum -a 256 | cut -d' ' -f1)
+
+for attempt in $(seq 1 12); do
+  REMOTE_SUM=$(curl -fsS "$TARGET_URL/app.js?deploycheck=$DEPLOY_ID-$attempt" | shasum -a 256 | cut -d' ' -f1) || REMOTE_SUM=""
+  [ "$LOCAL_SUM" = "$REMOTE_SUM" ] && break
+  echo "  waiting for $TARGET_URL to pick up the new alias ($attempt/12)..."
+  sleep 15
+done
 
 if [ "$LOCAL_SUM" != "$REMOTE_SUM" ]; then
   echo "" >&2
-  echo "DEPLOY FAILED VERIFICATION." >&2
+  echo "DEPLOY FAILED VERIFICATION after 3 minutes." >&2
   echo "  $TARGET_URL/app.js does not match web/app.js." >&2
   echo "  local  $LOCAL_SUM" >&2
   echo "  served $REMOTE_SUM" >&2
   echo "" >&2
   echo "The upload succeeded but the alias is still on an older deployment." >&2
-  echo "Promote it by hand:" >&2
-  echo "  npx --yes eas-cli@23.2.0 deploy:alias --prod --id $DEPLOY_ID" >&2
+  echo "This build is always reachable at its own URL, which never needs an alias:" >&2
+  echo "  https://clinic-stock--$DEPLOY_ID.expo.app" >&2
+  echo "" >&2
+  echo "Move the alias by hand:" >&2
+  # Mode-specific ON PURPOSE. This line used to say --prod in both modes, so
+  # following it after a failed PREVIEW deploy would have published straight to
+  # the clinic - the exact thing the required {preview|prod} argument exists to
+  # prevent.
+  if [ "$MODE" = prod ]; then
+    echo "  npx --yes eas-cli@23.2.0 deploy:alias --prod --id $DEPLOY_ID" >&2
+  else
+    echo "  npx --yes eas-cli@23.2.0 deploy:alias --alias preview --id $DEPLOY_ID" >&2
+  fi
   exit 1
 fi
 
