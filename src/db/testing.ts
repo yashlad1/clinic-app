@@ -2,7 +2,6 @@ import { openNodeDb } from './driver.node';
 import { migrate } from './migrate';
 import type { Db } from './driver';
 import { seedCatalog } from './repo/catalog';
-import { createStaff } from './repo/staff';
 import type { WriteContext } from '../domain/ledger';
 import type { SeedVaccine } from '../domain/seed';
 
@@ -26,11 +25,10 @@ export async function makeTestDb(
 
   const deviceId = 'test-device';
   if (opts.seed !== undefined) await seedCatalog(db, deviceId, now, opts.seed);
-  const staffId = await createStaff(db, 'Dr Test', deviceId, now);
 
   return {
     db,
-    ctx: { deviceId, staffId, now, tzOffsetMinutes: IST },
+    ctx: { deviceId, now, tzOffsetMinutes: IST },
     async vaccineId(name: string) {
       const row = await db.first<{ id: string }>(`SELECT id FROM vaccines WHERE name = ?`, [name]);
       if (!row) throw new Error(`no seeded vaccine named ${name}`);

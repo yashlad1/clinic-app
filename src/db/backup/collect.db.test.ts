@@ -14,7 +14,7 @@ async function env() {
 }
 
 describe('doses.csv is shaped like the notebook page it replaces', () => {
-  it('writes date, 12-hour time, vaccine, batch, child, doses and who entered it', async () => {
+  it('writes date, 12-hour time, vaccine, batch, child and doses', async () => {
     const { db, ctx, mr, lot } = await env();
     const child = await createPatient(db, { name: "O'Brien, Aarav" }, ctx.deviceId, T0);
     await recordReceipt(db, ctx, { clientActionId: 'r', vaccineId: mr, lotId: lot, doses: 30 });
@@ -24,9 +24,9 @@ describe('doses.csv is shaped like the notebook page it replaces', () => {
 
     const csv = await dosesCsv(db);
     const [header, row] = csv.trim().split('\r\n');
-    expect(header).toBe('date,time,vaccine,batch,child,doses,entered_by');
+    expect(header).toBe('date,time,vaccine,batch,child,doses');
     // The comma inside BOTH the vaccine name and the child name must be quoted.
-    expect(row).toBe('2026-09-06,10:30 am,Measles-Rubella (MR),MR-77,"O\'Brien, Aarav",1,Dr Test');
+    expect(row).toBe('2026-09-06,10:30 am,Measles-Rubella (MR),MR-77,"O\'Brien, Aarav",1');
   });
 
   it('omits an undone dose, matching the on-screen report', async () => {
@@ -65,7 +65,7 @@ describe('bundle contents', () => {
     const { db, ctx, mr, lot } = await env();
     await recordReceipt(db, ctx, { clientActionId: 'r', vaccineId: mr, lotId: lot, doses: 30 });
     const counts = await tableCounts(db);
-    expect(counts).toMatchObject({ vaccines: 1, lots: 1, staff: 1, stock_movements: 1, patients: 0 });
+    expect(counts).toMatchObject({ vaccines: 1, lots: 1, staff: 0, stock_movements: 1, patients: 0 });
   });
 
   it('records a correction in the raw ledger CSV so the audit trail survives export', async () => {

@@ -71,7 +71,6 @@ export interface DoseLine {
   vaccine_name: string;
   lot_number: string | null;
   patient_label: string | null;
-  staff_name: string | null;
   doses: number;
   needs_detail: number;
 }
@@ -80,12 +79,11 @@ export interface DoseLine {
 export function dosesGiven(db: Db, localDate: string): Promise<DoseLine[]> {
   return db.all<DoseLine>(
     `SELECT m.id, m.local_time, v.name AS vaccine_name, l.lot_number,
-            m.patient_label, st.name AS staff_name,
+            m.patient_label,
             -m.delta_doses AS doses, m.needs_detail
        FROM v_movement_effective m
        JOIN vaccines v ON v.id = m.vaccine_id
        LEFT JOIN lots  l ON l.id = m.lot_id
-       LEFT JOIN staff st ON st.id = m.staff_id
       WHERE m.movement_type = 'ADMINISTRATION' AND m.local_date = ?
       ORDER BY m.occurred_at ASC`,
     [localDate],
@@ -208,12 +206,11 @@ export function todaysStrip(db: Db, at: number = Date.now(), tz?: number) {
 export function missingChildEntries(db: Db, limit = 50): Promise<DoseLine[]> {
   return db.all<DoseLine>(
     `SELECT m.id, m.local_time, v.name AS vaccine_name, l.lot_number,
-            m.patient_label, st.name AS staff_name,
+            m.patient_label,
             -m.delta_doses AS doses, m.needs_detail
        FROM v_movement_effective m
        JOIN vaccines v ON v.id = m.vaccine_id
        LEFT JOIN lots  l ON l.id = m.lot_id
-       LEFT JOIN staff st ON st.id = m.staff_id
       WHERE m.needs_detail = 1
       ORDER BY m.occurred_at DESC
       LIMIT ?`,

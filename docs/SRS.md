@@ -32,7 +32,7 @@ From those two events it produces the current stock position, low-stock warnings
 activity report.
 
 **In scope:** a vaccine catalog with trade names; batch/lot tracking; per-vaccine vial-versus-dose
-counting; an optional child register; multiple staff; separate balances for privately purchased and
+counting; an optional child register; separate balances for privately purchased and
 government (UIP) stock; on-device storage; backup and restore.
 
 **Out of scope, explicitly:** costing, billing, GST and any accounting or financial reporting;
@@ -159,7 +159,7 @@ that single device.
 | Ref | Requirement | Verified by |
 | --- | --- | --- |
 | **FR-20** | The clinician shall record a dose in **no more than three taps** from application launch, and **two** if the child is not recorded. | test-plan steps 2, 8 |
-| **FR-21** | Each dose entry shall capture the vaccine, the time, the batch, optionally the child, and the staff member who entered it. | `ledger.db.test.ts` — "stamps staff, device, and IST…" |
+| **FR-21** | Each dose entry shall capture the vaccine, the time, the batch and optionally the child. The doctor gives every dose herself, so entries are not attributed to a named person. | `ledger.db.test.ts` — "stamps device and IST…" |
 | **FR-22** | Recording the child shall be **optional and skippable**, and skipping shall never block or delay the entry. | `ledger.db.test.ts` — "the child is optional, by design" |
 | **FR-23** | A dose recorded without a child shall be flagged so the name can be added later, without altering the stock arithmetic. | `schema.db.test.ts` — "still allows ANNOTATIONS"; `reports/today.tsx` |
 | **FR-24** | The batch shall default to the most recently used batch in stock for that vaccine, so batch selection is usually zero taps. | `lots.ts` `lastUsedLot`; `dose/[vaccineId].tsx` |
@@ -188,7 +188,7 @@ that single device.
 | Ref | Requirement | Verified by |
 | --- | --- | --- |
 | **FR-50** | *"Vaccine stock, names, unique values"* — the system shall list each vaccine with its present stock, each appearing exactly once. | `reports.db.test.ts` — "lists every catalog vaccine exactly once" |
-| **FR-51** | *"Vaccines given today, time, count"* — the system shall list every dose given on a given local date with its time, vaccine, batch, child and staff member, plus per-vaccine totals. | `reports.db.test.ts` |
+| **FR-51** | *"Vaccines given today, time, count"* — the system shall list every dose given on a given local date with its time, vaccine, batch and child, plus per-vaccine totals. | `reports.db.test.ts` |
 | **FR-52** | Activity counts shall **exclude** undone entries: three doses with one undone shall report two. | `reports.db.test.ts` — "EXCLUDES an undone dose" |
 | **FR-53** | *"Vaccines remaining today, time, count"* — the system shall present on-hand stock together with the derivation that produces it: `Opening · +Received · −Given · −Wasted · = Now`. | `reports.db.test.ts` — "the movement strip reconciles" |
 | **FR-54** | That derivation shall always sum to the stated current figure, including when an entry from a previous day is corrected today. | `reports.db.test.ts` — 300-case property test |
@@ -206,7 +206,7 @@ that single device.
 | --- | --- | --- |
 | **FR-70** | One action shall produce a single backup file containing both the complete database and spreadsheet-readable CSVs, and offer it to the Android share sheet. | `export.ts`; test-plan step 10 |
 | **FR-71** | The database image shall be produced with SQLite serialisation, never a raw file copy, because under WAL journalling recent commits are not yet in the `.db` file. | `export.ts` `buildBackupBundle` |
-| **FR-72** | `doses.csv` shall be shaped like the notebook page it replaces: date, 12-hour time, vaccine, batch, child, doses, entered-by. | `collect.db.test.ts` |
+| **FR-72** | `doses.csv` shall be shaped like the notebook page it replaces: date, 12-hour time, vaccine, batch, child, doses. | `collect.db.test.ts` |
 | **FR-73** | CSV output shall correctly quote commas, quotation marks, newlines and apostrophes. | `csv.db.test.ts` |
 | **FR-74** | A candidate backup shall be validated **before** any live data is modified, and the confirmation shall show real counts from both the backup and the phone. | `validate.db.test.ts`; `import.ts` |
 | **FR-75** | Restore shall reject, with a **specific** message, a file that is not a zip, contains no database, was written by a newer version, is missing tables, or contradicts its own manifest. | `validate.db.test.ts` — "backup rejection is always specific" |

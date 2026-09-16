@@ -11,7 +11,6 @@ import { newId } from '../../domain/ids';
 import { recordAdministration, reverseMovement, findRecentSimilar } from '../../domain/ledger';
 import { lotsInStock, lastUsedLot, isExpired } from '../../db/repo/lots';
 import { createPatient, recentPatients, searchPatients } from '../../db/repo/patients';
-import { listStaff } from '../../db/repo/staff';
 import { bumpDosesSinceBackup } from '../../db/repo/settings';
 import { describeStock } from '../../domain/stock';
 import { expiryToMonthLabel, todayLocal } from '../../domain/time';
@@ -51,7 +50,6 @@ export default function DoseScreen() {
     (d) => (childQuery.trim().length >= 2 ? searchPatients(d, childQuery.trim(), 8) : Promise.resolve([])),
     [childQuery],
   );
-  const { data: staff } = useQuery((d) => listStaff(d), []);
 
   // Preselect the most-recently-used lot, so lot choice is usually zero taps.
   const effectiveLot = lotId !== undefined ? lotId : (preferredLot?.lot_id ?? lots?.[0]?.lot_id ?? null);
@@ -91,7 +89,7 @@ export default function DoseScreen() {
       const label = skipChild ? null : (childLabel ?? (childQuery.trim() || null));
       const { movement, created } = await recordAdministration(
         db,
-        { deviceId, staffId: staff?.[0]?.id ?? null },
+        { deviceId },
         {
           clientActionId,
           vaccineId,

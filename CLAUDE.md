@@ -72,12 +72,12 @@ Confirmed with the user. Do not relitigate without asking.
 | --- | --- |
 | Platform | React Native, Expo SDK 57, real installable Android app |
 | Storage | On-device SQLite is the **source of truth**. The app runs fully offline and needs no internet to use. Since 7 Sep 2026 it also replicates to a server — see section 10a |
-| Dose entry captures | Vaccine + timestamp, batch/lot, child (**optional**), who entered it |
+| Dose entry captures | Vaccine + timestamp, batch/lot, child (**optional**) |
 | Child identification | Saved patient list, type-ahead + inline quick-add |
 | Child required? | **No — always skippable** |
 | Multi-dose vials | Per-vaccine setting: `unit_mode` is `DOSE` or `VIAL` with `doses_per_vial` |
 | Language | English only |
-| Multiple staff | Yes — simple staff list, `staff_id` on every ledger row |
+| Multiple staff | **No.** The doctor gives every dose herself, so per-entry attribution was a name to maintain and get wrong — one mistyped row stamped itself on every dose in the clinic. Removed 16 Sep 2026. The `staff` table and `staff_id` stay in the schema unread (invariant 7); nothing writes them |
 | Government (UIP) stock | Tracked as a balance separate from privately purchased stock |
 | Cost / billing / GST / accounting | **Out of scope** — user explicitly excluded it |
 | Local Android toolchain | **Not used.** Expo Go for dev, EAS cloud build for the APK |
@@ -210,11 +210,11 @@ lots              id, vaccine_id FK, lot_number, expiry_date?,
                   funding_source ('PRIVATE'|'GOVT_UIP')
                   UNIQUE(vaccine_id, lot_number, funding_source)
 patients          id, name, dob?, guardian_phone?
-staff             id, name, is_active
+staff             id, name, is_active            ← retired 16 Sep 2026, never read or written
 stock_movements   id, idempotency_key UNIQUE, vaccine_id FK, lot_id FK?,
                   delta_doses (CHECK <> 0), movement_type, wastage_reason?,
                   stock_source DEFAULT 'CLINIC_STOCK',
-                  patient_id FK?, patient_label?, staff_id FK?,
+                  patient_id FK?, patient_label?, staff_id FK? (retired, always NULL),
                   occurred_at, local_date (INDEXED), local_time, tz_offset_minutes,
                   recorded_at, reverses_id FK? UNIQUE, note?, needs_detail
 settings          key PK, value
@@ -403,7 +403,7 @@ These are requirements, not preferences.
 | Asked for | Delivered as |
 | --- | --- |
 | "Vaccine stock, names, unique values" | `SUM(delta_doses) GROUP BY vaccine_id` — ambient on the Stock tab. Uniqueness is structural: one catalog row, so a vaccine *cannot* appear twice |
-| "Vaccines given today, time, count" | Line items from `v_movement_effective WHERE local_date = today` — time, vaccine, lot, child, entered-by — plus per-vaccine totals |
+| "Vaccines given today, time, count" | Line items from `v_movement_effective WHERE local_date = today` — time, vaccine, lot, child — plus per-vaccine totals |
 | "Vaccines remaining today, time, count" | Primary number is **on-hand right now**, stamped `as of 14:32`. Directly beneath it, a self-checking movement strip: `Opening 30 · +Received 20 · −Given 7 · −Wasted 3 · = Now 40` |
 
 That strip is the point. "Remaining today" is genuinely ambiguous — on-hand now vs. opening minus

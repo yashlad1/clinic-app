@@ -79,7 +79,7 @@ erDiagram
         TEXT    stock_source         "CLINIC_STOCK | PATIENT_SUPPLIED"
         TEXT    patient_id        FK "nullable - dose entry is skippable"
         TEXT    patient_label        "name AS TYPED; history is never rewritten"
-        TEXT    staff_id          FK "who entered it"
+        TEXT    staff_id          FK "retired, always NULL"
         INTEGER occurred_at          "the clinical time"
         TEXT    local_date           "YYYY-MM-DD, INDEXED - powers 'today'"
         TEXT    local_time           "HH:MM - the 'time' in the reports"

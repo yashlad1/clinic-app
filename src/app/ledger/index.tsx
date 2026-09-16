@@ -18,7 +18,6 @@ interface LedgerLine {
   vaccine_name: string;
   lot_number: string | null;
   patient_label: string | null;
-  staff_name: string | null;
   note: string | null;
   reverses_id: string | null;
   is_reversed: number;
@@ -39,12 +38,11 @@ export default function LedgerScreen() {
     d.all<LedgerLine>(
       `SELECT m.id, m.local_date, m.local_time, m.movement_type, m.delta_doses,
               v.name AS vaccine_name, l.lot_number, m.patient_label,
-              st.name AS staff_name, m.note, m.reverses_id,
+              m.note, m.reverses_id,
               EXISTS(SELECT 1 FROM stock_movements r WHERE r.reverses_id = m.id) AS is_reversed
          FROM stock_movements m
          JOIN vaccines v ON v.id = m.vaccine_id
          LEFT JOIN lots l ON l.id = m.lot_id
-         LEFT JOIN staff st ON st.id = m.staff_id
         ORDER BY m.recorded_at DESC
         LIMIT 500`,
     ),
@@ -82,7 +80,6 @@ export default function LedgerScreen() {
                 {formatTime12h(item.local_time)}
                 {item.lot_number ? ` · batch ${item.lot_number}` : ''}
                 {item.patient_label ? ` · ${item.patient_label}` : ''}
-                {item.staff_name ? ` · ${item.staff_name}` : ''}
               </T>
               {!undone && item.movement_type !== 'REVERSAL' ? (
                 <SecondaryButton

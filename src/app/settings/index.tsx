@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { BigButton, ErrorState, Field, Input, Loading, Row, T, useBottomInset } from '../../ui/components';
+import { BigButton, ErrorState, Field, Input, Row, T, useBottomInset } from '../../ui/components';
 import { color, space, type, weight } from '../../ui/tokens';
 import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { useAction } from '../../ui/use-action';
 import { SETTING, getSetting, setSetting } from '../../db/repo/settings';
-import { createStaff, listStaff } from '../../db/repo/staff';
 import { LATEST_VERSION } from '../../db/migrate';
 
 export default function SettingsScreen() {
@@ -16,17 +15,14 @@ export default function SettingsScreen() {
   const toast = useToast();
   const run = useAction();
   const [clinic, setClinic] = useState('');
-  const [newStaff, setNewStaff] = useState('');
 
-  const { data: saved } = useQuery((d) => getSetting(d, SETTING.clinicName));
-  const { data: staff, error, reload } = useQuery((d) => listStaff(d, false));
+  const { data: saved, error, reload } = useQuery((d) => getSetting(d, SETTING.clinicName));
 
   useEffect(() => {
     if (saved !== null && saved !== undefined) setClinic(saved);
   }, [saved]);
 
   if (error) return <ErrorState error={error} onRetry={reload} what="load settings" />;
-  if (!staff) return <Loading />;
 
   return (
     <ScrollView style={st.screen} contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl + bottomInset }]}>
@@ -40,31 +36,6 @@ export default function SettingsScreen() {
           await setSetting(db, SETTING.clinicName, clinic.trim());
           bump();
           toast.show('Saved.');
-        })}
-      />
-
-      <T style={st.section}>Who enters data</T>
-      {staff.map((s) => (
-        <Row key={s.id} title={s.name} />
-      ))}
-      <Field label="Add a person">
-        <Input
-          value={newStaff}
-          onChangeText={setNewStaff}
-          placeholder="Name"
-          autoCapitalize="words"
-          autoCorrect={false}
-        />
-      </Field>
-      <BigButton
-        label="Add"
-        variant="outline"
-        disabled={!newStaff.trim()}
-        onPress={() => void run('add this person', async () => {
-          await createStaff(db, newStaff.trim(), deviceId);
-          setNewStaff('');
-          bump();
-          toast.show('Added.');
         })}
       />
 

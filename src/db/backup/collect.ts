@@ -15,11 +15,10 @@ export async function dosesCsv(db: Db): Promise<string> {
   const rows = await db.all<Record<string, CsvValue>>(
     `SELECT m.local_date AS date, m.local_time AS time24, v.name AS vaccine,
             l.lot_number AS batch, m.patient_label AS child,
-            -m.delta_doses AS doses, st.name AS entered_by
+            -m.delta_doses AS doses
        FROM v_movement_effective m
        JOIN vaccines v ON v.id = m.vaccine_id
        LEFT JOIN lots l ON l.id = m.lot_id
-       LEFT JOIN staff st ON st.id = m.staff_id
       WHERE m.movement_type = 'ADMINISTRATION'
       ORDER BY m.occurred_at ASC`,
   );
@@ -30,9 +29,8 @@ export async function dosesCsv(db: Db): Promise<string> {
     batch: r.batch,
     child: r.child,
     doses: r.doses,
-    entered_by: r.entered_by,
   }));
-  return objectsToCsv(['date', 'time', 'vaccine', 'batch', 'child', 'doses', 'entered_by'], shaped);
+  return objectsToCsv(['date', 'time', 'vaccine', 'batch', 'child', 'doses'], shaped);
 }
 
 export async function movementsCsv(db: Db): Promise<string> {
@@ -40,16 +38,15 @@ export async function movementsCsv(db: Db): Promise<string> {
     `SELECT m.local_date AS date, m.local_time AS time, m.movement_type AS type,
             v.name AS vaccine, l.lot_number AS batch, m.delta_doses AS change_doses,
             m.wastage_reason AS wastage_reason, m.patient_label AS child,
-            st.name AS entered_by, m.note AS note,
+            m.note AS note,
             CASE WHEN m.reverses_id IS NULL THEN '' ELSE 'reverses an earlier entry' END AS correction
        FROM stock_movements m
        JOIN vaccines v ON v.id = m.vaccine_id
        LEFT JOIN lots l ON l.id = m.lot_id
-       LEFT JOIN staff st ON st.id = m.staff_id
       ORDER BY m.occurred_at ASC, m.recorded_at ASC`,
   );
   return objectsToCsv(
-    ['date', 'time', 'type', 'vaccine', 'batch', 'change_doses', 'wastage_reason', 'child', 'entered_by', 'note', 'correction'],
+    ['date', 'time', 'type', 'vaccine', 'batch', 'change_doses', 'wastage_reason', 'child', 'note', 'correction'],
     rows as never,
   );
 }

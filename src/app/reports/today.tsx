@@ -65,10 +65,10 @@ export default function TodayScreen() {
               </T>
               {/* Only what is actually known. Joining present parts avoids
                   both "no name recorded" and a leading "· batch ..." . */}
-              {[l.patient_label, l.lot_number ? `batch ${l.lot_number}` : null, l.staff_name]
+              {[l.patient_label, l.lot_number ? `batch ${l.lot_number}` : null]
                 .filter(Boolean).length ? (
                 <T style={st.meta}>
-                  {[l.patient_label, l.lot_number ? `batch ${l.lot_number}` : null, l.staff_name]
+                  {[l.patient_label, l.lot_number ? `batch ${l.lot_number}` : null]
                     .filter(Boolean)
                     .join(' · ')}
                 </T>

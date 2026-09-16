@@ -151,7 +151,7 @@ export default function MoreScreen() {
         />
         <Row
           title="Settings"
-          subtitle="Clinic name, staff, about"
+          subtitle="Clinic name, about"
           onPress={() => router.push('/settings')}
           last
         />

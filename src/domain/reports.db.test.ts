@@ -74,7 +74,7 @@ describe('Report 2: vaccines given today, time, count', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({
       local_time: '10:30', vaccine_name: 'BCG', lot_number: 'AB1234',
-      patient_label: 'Aarav Sharma', staff_name: 'Dr Test', doses: 1,
+      patient_label: 'Aarav Sharma', doses: 1,
     });
   });
 

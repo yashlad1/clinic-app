@@ -4,7 +4,6 @@ import { newId } from '../../domain/ids';
 export const SETTING = {
   deviceId: 'device_id',
   clinicName: 'clinic_name',
-  currentStaffId: 'current_staff_id',
   lastBackupAt: 'last_backup_at',
   dosesSinceBackup: 'doses_since_backup',
   onboardingDone: 'onboarding_done',

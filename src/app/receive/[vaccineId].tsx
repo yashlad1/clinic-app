@@ -10,7 +10,6 @@ import { useAction } from '../../ui/use-action';
 import { newId } from '../../domain/ids';
 import { recordReceipt, reverseMovement } from '../../domain/ledger';
 import { findOrCreateLot } from '../../db/repo/lots';
-import { listStaff } from '../../db/repo/staff';
 import { describeStock, dosesFromVials } from '../../domain/stock';
 import { MonthYearWheel } from '../../ui/wheel';
 import { expiryFromMonth } from '../../domain/time';
@@ -39,7 +38,6 @@ export default function ReceiveScreen() {
     (d) => d.first<StockRow>(`SELECT * FROM v_stock_on_hand WHERE vaccine_id = ?`, [vaccineId]),
     [vaccineId],
   );
-  const { data: staff } = useQuery((d) => listStaff(d), []);
 
   if (error) return <ErrorState error={error} onRetry={reload} what="load this vaccine" />;
   if (!vaccine) return <Loading />;
@@ -69,7 +67,7 @@ export default function ReceiveScreen() {
         },
         deviceId,
       );
-      const { movement } = await recordReceipt(db, { deviceId, staffId: staff?.[0]?.id ?? null }, {
+      const { movement } = await recordReceipt(db, { deviceId }, {
         clientActionId: newId(),
         vaccineId,
         lotId,

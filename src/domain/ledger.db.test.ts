@@ -229,10 +229,9 @@ describe('the child is optional, by design', () => {
 });
 
 describe('attribution and stamping', () => {
-  it('stamps staff, device, and IST local date/time on every row', async () => {
+  it('stamps device and IST local date/time on every row', async () => {
     const { db, ctx, bcg, lot } = await env();
     const { movement } = await recordReceipt(db, ctx, { clientActionId: 'r1', vaccineId: bcg, lotId: lot, doses: 10 });
-    expect(movement.staff_id).toBe(ctx.staffId);
     expect(movement.device_id).toBe('test-device');
     expect(movement.tz_offset_minutes).toBe(IST);
     expect(movement.local_date).toBe('2026-09-06');

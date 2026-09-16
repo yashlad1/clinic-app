@@ -24,7 +24,6 @@ import type { MovementType, StockMovement, StockSource, WastageReason } from './
 
 export interface WriteContext {
   deviceId: string;
-  staffId?: string | null;
   /** Injectable for tests; defaults to now. */
   now?: number;
   /** Injectable for tests; defaults to the device's current offset. */
@@ -63,10 +62,10 @@ async function insertMovement(db: Db, ctx: WriteContext, input: MovementInput): 
   const res = await db.run(
     `INSERT INTO stock_movements (
        id, idempotency_key, vaccine_id, lot_id, delta_doses, movement_type,
-       wastage_reason, stock_source, patient_id, patient_label, staff_id,
+       wastage_reason, stock_source, patient_id, patient_label,
        occurred_at, local_date, local_time, tz_offset_minutes, recorded_at,
        reverses_id, note, needs_detail, created_at, updated_at, device_id
-     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
      ON CONFLICT(idempotency_key) DO NOTHING`,
     [
       newId(now),
@@ -79,7 +78,6 @@ async function insertMovement(db: Db, ctx: WriteContext, input: MovementInput): 
       input.stockSource ?? 'CLINIC_STOCK',
       input.patientId ?? null,
       input.patientLabel ?? null,
-      ctx.staffId ?? null,
       s.occurredAt,
       s.localDate,
       s.localTime,
