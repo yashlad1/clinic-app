@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { BigButton, Empty, ErrorState, Input, Loading, Row, SecondaryButton, T, useBottomInset } from '../../ui/components';
 import { useAction } from '../../ui/use-action';
-import { color, radius, space, type, weight } from '../../ui/tokens';
+import { color, space, type, weight } from '../../ui/tokens';
 import { centred } from '../../ui/layout';
 import { useDb, useQuery } from '../../db/provider';
 import { asOfLabel, dosesGiven, dosesGivenTotals, movementStrip } from '../../domain/reports';
 import { fillMissingChild } from '../../domain/ledger';
 import { formatDayLabel, formatTime12h, todayLocal } from '../../domain/time';
+import { MovementStrip } from '../../ui/movement-strip';
 
 /** "Vaccines given today, time, count" - the notebook page, arithmetic included. */
 export default function TodayScreen() {
@@ -35,14 +36,7 @@ export default function TodayScreen() {
       </T>
       <T style={st.asOf}>{asOfLabel()}</T>
 
-      {strip ? (
-        <View style={st.strip}>
-          <T style={st.stripText}>
-            Opening {strip.opening} · +Received {strip.received} · −Given {strip.given} · −Wasted{' '}
-            {strip.wasted} · = {strip.now} now
-          </T>
-        </View>
-      ) : null}
+      {strip ? <MovementStrip strip={strip} accent={color.dose} label="Stock today" /> : null}
 
       {totals?.length ? (
         <>
@@ -118,15 +112,6 @@ const st = StyleSheet.create({
   day: { fontSize: type.label, color: color.textMuted, fontWeight: weight.semibold },
   total: { fontSize: type.hero, fontWeight: weight.bold, color: color.text },
   asOf: { fontSize: type.min, color: color.textMuted },
-  strip: {
-    marginTop: space.md,
-    padding: space.md,
-    borderRadius: radius.md,
-    backgroundColor: color.surface,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  stripText: { fontSize: type.min, color: color.textMuted, lineHeight: 20 },
   section: { fontSize: type.label, fontWeight: weight.bold, color: color.textMuted, marginTop: space.xl, marginBottom: space.sm },
   count: { fontSize: type.title, fontWeight: weight.bold, color: color.text },
   line: {
@@ -139,7 +124,7 @@ const st = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: color.border,
   },
-  time: { fontSize: type.label, color: color.textMuted, width: 76, fontWeight: weight.semibold },
+  time: { fontSize: type.label, color: color.textMuted, minWidth: 76, fontWeight: weight.semibold },
   vaccine: { fontSize: type.body, fontWeight: weight.semibold, color: color.text },
   meta: { fontSize: type.min, color: color.textMuted, marginTop: 2 },
 });
