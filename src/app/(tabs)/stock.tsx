@@ -5,6 +5,7 @@ import { Badge, BigButton, Chip, ErrorState, Footer, Input, Loading, T, useBotto
 import { color, space, type, weight } from '../../ui/tokens';
 import { MovementStrip } from '../../ui/movement-strip';
 import { centred } from '../../ui/layout';
+import { searchRank } from '../../domain/search';
 import { useQuery } from '../../db/provider';
 import { asOfLabel, movementStrip, stockOnHand } from '../../domain/reports';
 import { describeStockRow } from '../../domain/stock';
@@ -37,12 +38,11 @@ export default function AddStockScreen() {
   const lows = decorated.filter((x) => x.d.level !== 'OK');
 
   const shown = useMemo(() => {
-    let list = filter === 'low' ? lows : [...lows, ...decorated.filter((x) => x.d.level === 'OK')];
-    if (q.trim()) {
-      const n = q.trim().toLowerCase();
-      list = list.filter((x) => x.row.name.toLowerCase().includes(n));
-    }
-    return list;
+    const list = filter === 'low' ? lows : [...lows, ...decorated.filter((x) => x.d.level === 'OK')];
+    if (!q.trim()) return list;
+    // Rank the rows, then put the decorations back on in that order.
+    const ranked = searchRank(list.map((x) => x.row), q);
+    return ranked.map((row) => list.find((x) => x.row.vaccine_id === row.vaccine_id)!);
   }, [decorated, lows, filter, q]);
 
   if (error) return <ErrorState error={error} onRetry={reload} what="load your stock" />;

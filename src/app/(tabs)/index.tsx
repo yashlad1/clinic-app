@@ -10,6 +10,7 @@ import { daysAgoLocal, formatDayLabel, todayLocal } from '../../domain/time';
 import { BackupBanner } from '../../ui/backup-banner';
 import { SyncBanner } from '../../ui/sync-banner';
 import { useColumns } from '../../ui/layout';
+import { searchRank } from '../../domain/search';
 import { isAwaitingCatalog, startNewClinicHere } from '../../sync/adopt';
 import { useAction } from '../../ui/use-action';
 
@@ -37,16 +38,9 @@ export default function GiveDoseScreen() {
 
   const dosesToday = (given ?? []).reduce((n, g) => n + g.doses, 0);
 
-  const filtered = useMemo(() => {
-    const all = rows ?? [];
-    if (!q.trim()) return all;
-    const needle = q.trim().toLowerCase();
-    return all.filter(
-      (r) =>
-        r.name.toLowerCase().includes(needle) ||
-        (r.generic_name ?? '').toLowerCase().includes(needle),
-    );
-  }, [rows, q]);
+  // Ranked, not just filtered: an exact or leading match outranks one buried
+  // mid-word, and ties keep the 30-day usage order underneath.
+  const filtered = useMemo(() => searchRank(rows ?? [], q), [rows, q]);
 
   /**
    * Counted per level, not as one "not OK" bucket.

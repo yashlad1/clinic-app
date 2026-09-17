@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Badge, BigButton, Card, Chip, ErrorState, Footer, Input, Loading, T, useBottomInset } from '../../ui/components';
 import { color, radius, space, type, weight } from '../../ui/tokens';
 import { centred } from '../../ui/layout';
+import { searchRank } from '../../domain/search';
 import { useDb, useQuery } from '../../db/provider';
 import { useToast } from '../../ui/snackbar';
 import { useAction } from '../../ui/use-action';
@@ -46,11 +47,7 @@ export default function VaccinesScreen() {
 
   const rows = useMemo(() => {
     const list = showRemoved ? (removed ?? []) : (active ?? []);
-    if (!q.trim()) return list;
-    const n = q.trim().toLowerCase();
-    return list.filter(
-      (v) => v.name.toLowerCase().includes(n) || (v.generic_name ?? '').toLowerCase().includes(n),
-    );
+    return searchRank(list, q);
   }, [active, removed, showRemoved, q]);
 
   if (error) return <ErrorState error={error} onRetry={reload} what="load the catalog" />;

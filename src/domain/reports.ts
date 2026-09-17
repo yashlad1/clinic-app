@@ -25,15 +25,18 @@ import { todayLocal } from './time';
  */
 export function stockOnHand(db: Db, opts: { activeOnly?: boolean } = {}): Promise<StockRow[]> {
   return db.all<StockRow>(
-    `SELECT * FROM v_stock_on_hand
-      ${opts.activeOnly ? 'WHERE is_active = 1' : ''}
-      ORDER BY name COLLATE NOCASE`,
+    `SELECT s.*, v.aliases AS aliases FROM v_stock_on_hand s
+       JOIN vaccines v ON v.id = s.vaccine_id
+      ${opts.activeOnly ? 'WHERE s.is_active = 1' : ''}
+      ORDER BY s.name COLLATE NOCASE`,
   );
 }
 
 export function vaccinesInStock(db: Db): Promise<StockRow[]> {
   return db.all<StockRow>(
-    `SELECT * FROM v_stock_on_hand WHERE on_hand_doses <> 0 ORDER BY name COLLATE NOCASE`,
+    `SELECT s.*, v.aliases AS aliases FROM v_stock_on_hand s
+       JOIN vaccines v ON v.id = s.vaccine_id
+      WHERE s.on_hand_doses <> 0 ORDER BY s.name COLLATE NOCASE`,
   );
 }
 
@@ -47,8 +50,12 @@ export function vaccinesInStock(db: Db): Promise<StockRow[]> {
  */
 export function vaccinesByUsage(db: Db, sinceLocalDate: string): Promise<(StockRow & { recent_doses: number })[]> {
   return db.all(
-    `SELECT s.*, COALESCE(u.recent_doses, 0) AS recent_doses
+    // `aliases` is joined rather than read from the view: the view predates
+    // the search work and section 2 keeps migrations additive, so replacing it
+    // would cost a DROP for a column one query wants.
+    `SELECT s.*, v.aliases AS aliases, COALESCE(u.recent_doses, 0) AS recent_doses
        FROM v_stock_on_hand s
+       JOIN vaccines v ON v.id = s.vaccine_id
        LEFT JOIN (
          SELECT vaccine_id, -SUM(delta_doses) AS recent_doses
            FROM v_movement_effective

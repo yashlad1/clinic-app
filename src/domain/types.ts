@@ -72,6 +72,8 @@ export interface StockRow {
   vaccine_id: string;
   name: string;
   generic_name: string | null;
+  /** JSON array, search only - never identity. */
+  aliases: string | null;
   unit_mode: UnitMode;
   doses_per_vial: number;
   min_balance_doses: number;
