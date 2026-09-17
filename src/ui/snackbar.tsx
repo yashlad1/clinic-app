@@ -150,5 +150,5 @@ const st = StyleSheet.create({
   text: { flex: 1, color: color.onAccent, fontSize: type.label, fontWeight: weight.semibold },
   // A large hit area: this is tapped in a hurry, one-handed.
   undo: { minWidth: 88, minHeight: touch.min, alignItems: 'center', justifyContent: 'center' },
-  undoText: { color: '#93C5FD', fontSize: type.body, fontWeight: weight.bold, letterSpacing: 1 },
+  undoText: { color: color.undo, fontSize: type.body, fontWeight: weight.bold, letterSpacing: 1 },
 });

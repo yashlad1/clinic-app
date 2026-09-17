@@ -353,13 +353,21 @@ These are requirements, not preferences.
 - **No icon-only controls** outside the tab bar. Every button gets a word — icons are ambiguous to
   someone coming from paper.
 - Type scale: numbers that matter **28–34pt bold**, tile titles **22pt semibold**, body **18pt**,
-  labels 16pt, **floor 14pt**. Body `#0F172A` on `#FFFFFF` (**17.9:1 measured**). No grey below
-  `#55606E` (**6.4:1 measured**), no thin weights.
+  labels 16pt, **floor 14pt**. Body `#10233A` on `#FFFFFF` (**15.9:1 measured**). No grey below
+  `#46586F` (**7.3:1 measured**), no thin weights.
   These are no longer hand-written guesses — `src/ui/audit/contrast.db.test.ts` computes every
-  pairing and fails below 4.5:1. **Two pairings sit at exactly 4.5:1** (`low` on `lowSoft`, `ok` on
-  `okSoft`), so darkening either soft tint breaks compliance; change those only with the test open.
-- Semantic colours, all ≥4.5:1 on white: green `#15803D` ok, amber `#B45309` low, red `#B91C1C`
-  out/expired. **Never encode state by colour alone** — always colour **plus a word** ("LOW",
+  pairing and fails below 4.5:1. The tightest pairing now measures **4.6:1**, so there is a little
+  headroom where there used to be none; change a soft tint only with the test open.
+- **The palette is the Aero Clinic schema, adapted** (17 Sep 2026). Text `--ink`/`--ink-soft`,
+  primary `--sky-deep`, surfaces `--aero-bg-opaque`. The glass half of that schema — `backdrop-filter`,
+  `color-mix`, `@layer`, the gloss gradient — has no React Native equivalent and would be the wrong
+  instrument in a sunlit room regardless; what ships is its **Vista Basic** rendering, which the
+  schema itself says to design first. Its `--aqua` and `--grape` are marked fill-only and measure
+  2.2:1 and 4.0:1, so the two accents that must carry text are deepened along their own hue to 5:1.
+  Its 44px minimum target is **not** adopted — 56dp stands. Its disabled pairing measures 3.7:1 and
+  is darkened to 4.6:1.
+- Semantic colours, all ≥4.5:1 on white: green `#15803D` ok, amber `#A05E00` low, red `#A01E24`
+  out/expired. The schema has no green, so `ok` keeps its own measured value. **Never encode state by colour alone** — always colour **plus a word** ("LOW",
   "OUT", "CHECK"). ~8% of men are red-green colourblind and a bright clinic window destroys colour
   discrimination anyway.
 - **Minimal, not decorated.** Depth comes from soft surfaces, hairline borders and subtle elevation

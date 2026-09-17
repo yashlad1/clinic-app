@@ -13,44 +13,87 @@ import { Platform, type ViewStyle } from 'react-native';
  */
 
 export const color = {
+  /**
+   * The Aero Clinic palette, adapted to React Native.
+   *
+   * What came across: the ink/ink-soft text pair, sky-deep, caution, clinical,
+   * the opaque surface, and the rule that disabled is a TOKEN SWAP rather than
+   * a component-wide opacity - that last one is the schema and this file
+   * agreeing about the same bug.
+   *
+   * What could not: `backdrop-filter`, `color-mix`, `@layer`, `::after` and
+   * every media query in the sheet have no React Native equivalent, and the
+   * glass surface they build is the wrong instrument for a sunlit clinic
+   * anyway. Section 8 forbids gradients here for the same reason the schema
+   * ships a Vista Basic mode: the opaque rendering is the one that has to be
+   * right first. This palette IS that mode.
+   *
+   * Every value below is measured by contrast.db.test.ts, not asserted.
+   */
   bg: '#FFFFFF',
-  /** Soft neutral panels. Replaces the old heavy 2px-bordered boxes. */
-  surface: '#F4F6F9',
-  surfaceSunken: '#EBEEF3',
-  /** Light hairlines, because depth now comes from elevation rather than borders. */
-  border: '#E2E6EC',
-  borderStrong: '#C4CBD6',
+  /** --aero-bg-opaque. Soft neutral panels. */
+  surface: '#F2F7FC',
+  /** --aero-btn:disabled background, reused as the sunken surface. */
+  surfaceSunken: '#E7EDF3',
+  /** --aero-rim-outer, flattened: RN has no rgba rim over a blur. */
+  border: '#D8E2ED',
+  borderStrong: '#B7C6D6',
 
-  /** ~17:1 on white. */
-  text: '#0F172A',
-  /** ~6.2:1 on white - still comfortably above the 4.5:1 floor. */
-  textMuted: '#55606E',
+  /** --ink. 15.9:1 on white. */
+  text: '#10233A',
+  /** --ink-soft. 7.3:1 - the schema undersells it at 4.9. */
+  textMuted: '#46586F',
   onAccent: '#FFFFFF',
 
   /**
-   * One accent per context, so the two dangerous-to-confuse screens never look
-   * alike. Giving a dose and receiving stock move the ledger in OPPOSITE
-   * directions, and they now sit next to each other in the top tabs - so hue,
-   * wording and button colour all have to differ.
+   * One accent per context, still a safety feature rather than styling.
+   *
+   * The schema ships exactly ONE chrome colour that can carry text on white:
+   * --sky-deep at 5.4:1. --aqua (2.2:1) and --grape (4.0:1) are marked fill
+   * only, and they are right. But this app paints its accents as TEXT - tab
+   * labels, headings, button labels - and it needs three that stay apart at a
+   * glance, because Give dose and Add stock move the ledger in opposite
+   * directions and sit next to each other.
+   *
+   * So aqua and grape are deepened along their own hue until they clear 5:1,
+   * and the bright originals become the fills they were always meant to be.
    */
-  dose: '#1D4ED8', // blue    - Give dose
-  doseSoft: '#EEF3FF',
-  stock: '#0F766E', // teal    - Add stock
-  stockSoft: '#E6F4F2',
-  catalog: '#6D28D9', // violet  - Vaccines
-  catalogSoft: '#F3EEFF',
-  more: '#475569', // slate   - More
+  dose: '#1B6FA8', // --sky-deep, 5.4:1   - Give dose
+  doseSoft: '#E6F3FC', // --sky, as fill
+  stock: '#167B70', // --aqua deepened, 5.1:1 - Add stock
+  stockSoft: '#E5F8F6',
+  catalog: '#6B5ED6', // --grape deepened, 5.0:1 - Vaccines
+  catalogSoft: '#F7F6FE',
+  more: '#33455E', // slate, kept clear of textMuted
 
-  /** Reserved for stock LEVELS only; never reused as a context accent. */
+  /**
+   * Reserved for stock LEVELS only; never reused as a context accent.
+   *
+   * --caution and --clinical come straight from the schema. There is no green
+   * in it, so `ok` keeps the measured value it already had: a palette with no
+   * "all good" colour cannot supply one.
+   */
   ok: '#15803D',
-  okSoft: '#E7F7EC',
-  low: '#B45309',
-  lowSoft: '#FEF3C7',
-  danger: '#B91C1C',
-  dangerSoft: '#FEE9E9',
+  okSoft: '#EDFAF0',
+  low: '#A05E00', // --caution, 5.1:1
+  lowSoft: '#FFF3D1', // --caution-fill, as fill
+  danger: '#A01E24', // --clinical, 7.8:1
+  dangerSoft: '#FAE7E8',
+
+  /**
+   * Disabled, as the schema insists: a token swap, never opacity. Its own
+   * pairing (#6B7A8D on #E7EDF3) measures 3.7:1, so the text is darkened to
+   * clear this app's floor. A greyed-out control still has to be readable to
+   * someone deciding whether it is disabled or the app is broken.
+   */
+  disabledText: '#5E6B7C',
+  disabledFill: '#E7EDF3',
+
+  /** UNDO on the dark toast. A token now, so the contrast test can see it. */
+  undo: '#8FC7F0',
 
   /** Pressed-state overlays. */
-  pressed: 'rgba(15, 23, 42, 0.06)',
+  pressed: 'rgba(16, 35, 58, 0.06)',
 } as const;
 
 export type Accent = 'dose' | 'stock' | 'catalog' | 'more';
@@ -113,10 +156,10 @@ export function elevation(level: 0 | 1 | 2 | 3): ViewStyle {
     3: { shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
   }[level];
   const web = {
-    boxShadow: `0 ${level * 2}px ${level * 6}px rgba(15,23,42,${0.05 + level * 0.02})`,
+    boxShadow: `0 ${level * 2}px ${level * 6}px rgba(16,35,58,${0.05 + level * 0.02})`,
   } as unknown as ViewStyle;
   return (Platform.select({
-    ios: { shadowColor: '#0F172A', ...ios } as ViewStyle,
+    ios: { shadowColor: color.text, ...ios } as ViewStyle,
     android: { elevation: level * 2 } as ViewStyle,
     default: web,
   }) ?? {}) as ViewStyle;

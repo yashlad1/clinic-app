@@ -71,6 +71,39 @@ describe('white on a filled accent button', () => {
   }
 });
 
+/**
+ * Pairings the old palette had no tokens for, so the audit could not see them.
+ *
+ * The Aero schema's own disabled pair (#6B7A8D on #E7EDF3) measures 3.7:1 -
+ * below this app's floor - which is exactly the kind of thing a test catches
+ * and a copied stylesheet does not.
+ */
+describe('states that used to sit outside the palette', () => {
+  it('disabled text stays readable on the disabled fill', () => {
+    expect(contrast(color.disabledText, color.disabledFill)).toBeGreaterThanOrEqual(WCAG.AA);
+  });
+
+  it('UNDO clears the floor on the toast it sits on', () => {
+    // The most safety-critical control in the app: section 8 makes undo the
+    // replacement for confirmation dialogs on the dose path.
+    expect(contrast(color.undo, color.text)).toBeGreaterThanOrEqual(WCAG.AA);
+  });
+});
+
+describe('every accent on its own soft tint', () => {
+  // Selected chips and badges paint the accent ON the tint, not on white.
+  const pairs = {
+    dose: [color.dose, color.doseSoft],
+    stock: [color.stock, color.stockSoft],
+    catalog: [color.catalog, color.catalogSoft],
+  } as const;
+  for (const [name, [fg, bg]] of Object.entries(pairs)) {
+    it(`${name} on its tint is at least ${WCAG.AA}:1`, () => {
+      expect(contrast(fg, bg)).toBeGreaterThanOrEqual(WCAG.AA);
+    });
+  }
+});
+
 describe('the report', () => {
   it('prints every ratio, so a regression is legible not just red', () => {
     const rows: [string, number][] = [
@@ -91,6 +124,11 @@ describe('the report', () => {
       ['onAccent / stock', contrast(color.onAccent, color.stock)],
       ['onAccent / catalog', contrast(color.onAccent, color.catalog)],
       ['onAccent / more', contrast(color.onAccent, color.more)],
+      ['dose / doseSoft', contrast(color.dose, color.doseSoft)],
+      ['stock / stockSoft', contrast(color.stock, color.stockSoft)],
+      ['catalog / catalogSoft', contrast(color.catalog, color.catalogSoft)],
+      ['disabledText / disabledFill', contrast(color.disabledText, color.disabledFill)],
+      ['undo / toast', contrast(color.undo, color.text)],
     ];
     // eslint-disable-next-line no-console
     console.log(

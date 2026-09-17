@@ -30,11 +30,13 @@ export default function TodayScreen() {
 
   return (
     <ScrollView style={st.screen} contentContainerStyle={[centred, { padding: space.lg, paddingBottom: space.xxl + bottomInset }]}>
-      <T style={st.day}>{formatDayLabel()}</T>
+      {/* Same order as the Stock tab: when it was measured, then the number. */}
+      <T style={st.day}>
+        {formatDayLabel()} · {asOfLabel()}
+      </T>
       <T style={st.total}>
         {total} {total === 1 ? 'dose' : 'doses'} given
       </T>
-      <T style={st.asOf}>{asOfLabel()}</T>
 
       {strip ? <MovementStrip strip={strip} accent={color.dose} label="Stock today" /> : null}
 
@@ -111,7 +113,6 @@ const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
   day: { fontSize: type.label, color: color.textMuted, fontWeight: weight.semibold },
   total: { fontSize: type.hero, fontWeight: weight.bold, color: color.text },
-  asOf: { fontSize: type.min, color: color.textMuted },
   section: { fontSize: type.label, fontWeight: weight.bold, color: color.textMuted, marginTop: space.xl, marginBottom: space.sm },
   count: { fontSize: type.title, fontWeight: weight.bold, color: color.text },
   line: {

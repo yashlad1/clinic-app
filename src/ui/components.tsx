@@ -328,9 +328,9 @@ export function Stepper({
           onPress={() => step(-1)}
           onLongPress={() => step(-5)}
           disabled={value <= min}
-          style={({ pressed }) => [s.stepperBtn, value <= min && s.stepperBtnDisabled, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [s.stepperBtn, value <= min && s.stepperBtnDisabled, pressed && s.stepperBtnPressed]}
         >
-          <T style={s.stepperSign}>−</T>
+          <T style={[s.stepperSign, value <= min && s.stepperSignDisabled]}>−</T>
         </Pressable>
         <T style={s.stepperValue} accessibilityLabel={`${value}`}>
           {value}
@@ -341,9 +341,9 @@ export function Stepper({
           onPress={() => step(1)}
           onLongPress={() => step(5)}
           disabled={value >= max}
-          style={({ pressed }) => [s.stepperBtn, value >= max && s.stepperBtnDisabled, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [s.stepperBtn, value >= max && s.stepperBtnDisabled, pressed && s.stepperBtnPressed]}
         >
-          <T style={s.stepperSign}>+</T>
+          <T style={[s.stepperSign, value >= max && s.stepperSignDisabled]}>+</T>
         </Pressable>
       </View>
       {quickValues?.length ? (
@@ -565,7 +565,12 @@ export const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperBtnDisabled: { opacity: 0.4 },
+  // A token swap, not opacity. Component-wide opacity fades the glyph along
+  // with the surface, and a 0.4 minus sign is indistinguishable from a broken
+  // button to someone deciding whether the app is stuck or she is at the limit.
+  stepperBtnDisabled: { backgroundColor: color.disabledFill },
+  stepperSignDisabled: { color: color.disabledText },
+  stepperBtnPressed: { backgroundColor: color.surfaceSunken },
   stepperSign: { fontSize: type.big, fontWeight: weight.bold, color: color.text },
   stepperValue: {
     fontSize: type.hero,

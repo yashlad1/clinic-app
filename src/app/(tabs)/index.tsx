@@ -239,6 +239,11 @@ const st = StyleSheet.create({
     borderRadius: radius.lg,
     padding: space.lg,
     backgroundColor: color.bg,
+    // The rim, flattened out of --aero-rim-outer. Elevation alone is a very
+    // faint shadow on Android, and in a sunlit room the grid stopped reading
+    // as a set of targets and started reading as floating text.
+    borderWidth: 1,
+    borderColor: color.border,
   },
   tilePressed: { backgroundColor: color.doseSoft, transform: [{ scale: 0.985 }] },
   tileName: { fontSize: type.title, fontWeight: weight.semibold, color: color.text, lineHeight: 27 },
