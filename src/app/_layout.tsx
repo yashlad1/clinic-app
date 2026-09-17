@@ -1,6 +1,5 @@
 import React from 'react';
 import { Stack } from 'expo-router';
-import { Observe, ObserveInteractiveMarker, ObserveRoot } from 'expo-observe';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DbProvider } from '../db/provider';
@@ -8,23 +7,7 @@ import { ToastProvider } from '../ui/snackbar';
 import { AutoSync } from '../sync/auto';
 import { Empty, Loading, Screen } from '../ui/components';
 import { color } from '../ui/tokens';
-
-/**
- * EAS Observe. Module scope, before anything renders.
- *
- * Route params are filtered. The exported route NAME stays (`/dose/[vaccineId]`,
- * which is the useful part), but the resolved URL is dropped, so no row id from
- * this clinic's database leaves the phone in a metric. Section 13: nothing
- * clinic-identifying, and a metrics pipeline is not an exception to that.
- *
- * `dispatchInDebug` is deliberately not set - debug builds stay silent, so the
- * Expo Go and web smoke loops never post metrics.
- */
-Observe.configure({
-  integrations: {
-    'expo-router': { filteredParams: ['vaccineId', 'id'] },
-  },
-});
+import { InteractiveMarker, withObserve } from '../ui/observe';
 
 /**
  * The migration gate lives here: nothing renders until the schema is current,
@@ -53,7 +36,7 @@ function RootLayout() {
               subtree renders at the moment the app is genuinely usable. Marking
               it any earlier would report the app as interactive while she is
               still looking at "Opening clinic records". */}
-          <ObserveInteractiveMarker />
+          <InteractiveMarker />
           <AutoSync />
           <Stack
             screenOptions={{
@@ -89,4 +72,4 @@ function RootLayout() {
   );
 }
 
-export default ObserveRoot.wrap(RootLayout);
+export default withObserve(RootLayout);
