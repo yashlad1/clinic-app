@@ -1,5 +1,6 @@
 import React from 'react';
 import { Stack } from 'expo-router';
+import { Observe, ObserveInteractiveMarker, ObserveRoot } from 'expo-observe';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DbProvider } from '../db/provider';
@@ -9,11 +10,28 @@ import { Empty, Loading, Screen } from '../ui/components';
 import { color } from '../ui/tokens';
 
 /**
+ * EAS Observe. Module scope, before anything renders.
+ *
+ * Route params are filtered. The exported route NAME stays (`/dose/[vaccineId]`,
+ * which is the useful part), but the resolved URL is dropped, so no row id from
+ * this clinic's database leaves the phone in a metric. Section 13: nothing
+ * clinic-identifying, and a metrics pipeline is not an exception to that.
+ *
+ * `dispatchInDebug` is deliberately not set - debug builds stay silent, so the
+ * Expo Go and web smoke loops never post metrics.
+ */
+Observe.configure({
+  integrations: {
+    'expo-router': { filteredParams: ['vaccineId', 'id'] },
+  },
+});
+
+/**
  * The migration gate lives here: nothing renders until the schema is current,
  * because a screen that reads a half-migrated database shows numbers that are
  * quietly wrong.
  */
-export default function RootLayout() {
+function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
@@ -30,6 +48,12 @@ export default function RootLayout() {
         )}
       >
         <ToastProvider>
+          {/* Time-to-interactive is marked HERE, not on mount of this layout.
+              DbProvider holds its children until migrations finish, so this
+              subtree renders at the moment the app is genuinely usable. Marking
+              it any earlier would report the app as interactive while she is
+              still looking at "Opening clinic records". */}
+          <ObserveInteractiveMarker />
           <AutoSync />
           <Stack
             screenOptions={{
@@ -64,3 +88,5 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+export default ObserveRoot.wrap(RootLayout);
